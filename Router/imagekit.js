@@ -5,7 +5,7 @@ const ImageKit = require('imagekit');
 require('dotenv').config();
 
 
-const privateofkey = process.env.privateKeyimage
+const privateofkey = process.env.PRIVATE_KEY_IMAGE
 
 const imagekit = new ImageKit({
   publicKey: "public_pxbUbZQmz2LGTkhrvGgUMelJZbg=",
