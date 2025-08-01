@@ -73,10 +73,54 @@ const GetProductsSubcategory = async (req, res) => {
 };
 
 
+// PUT /api/products/:id
+const updateProduct = async (req, res) => {
+  try {
+    const productId = req.params.productId;
+    const updates = req.body;
+
+    // Optional: Validate ObjectId
+    if (!productId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'Invalid product ID' });
+    }
+
+    // Optional: Recalculate Stock if image_url/content is provided
+    if (updates.image_url) {
+      let total = 0;
+      updates.image_url.forEach((img) => {
+        if (Array.isArray(img.content)) {
+          img.content.forEach((item) => {
+            total += item.minstock || 0;
+          });
+        }
+      });
+      updates.Stock = total;
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(productId, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedProduct) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    res.status(200).json({ message: 'Product updated successfully', product: updatedProduct });
+  } catch (error) {
+    console.error('Error updating product:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+
+
+
 
 module.exports = {
     CreateProdcuts,
     GetProducts,
     GetProductssingle,
-    GetProductsSubcategory
+    GetProductsSubcategory,
+    updateProduct
 }
