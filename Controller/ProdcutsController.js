@@ -9,7 +9,7 @@ const CreateProdcuts = async (req, res) => {
       pricing,       // array of quantity/price_per/discount
       Desciptions,   // array of strings
       subcategory  ,
-      designtshirt  // ObjectId of subcategory
+        // ObjectId of subcategory
     } = req.body;
 
     // Validate essential fields (optional)
@@ -23,7 +23,7 @@ const CreateProdcuts = async (req, res) => {
       pricing,
       Desciptions,
       subcategory,
-      designtshirt
+      
       // Stock will be auto-calculated via pre("save") hook
     });
 
