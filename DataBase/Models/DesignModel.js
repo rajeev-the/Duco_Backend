@@ -15,7 +15,7 @@ const DesignSchema = new Schema(
       
     },
     cutomerprodcuts:{
-        type:Number,
+        type:String,
         default:null
     },
     design: {

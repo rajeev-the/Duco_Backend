@@ -15,6 +15,11 @@ const productSchema = new mongoose.Schema(
             minstock: { type: Number, default: 1 },
             size: { type: String, required: true }
           }
+        ],
+        designtshirt:[
+          {
+            type:String
+          }
         ]
       }
     ],

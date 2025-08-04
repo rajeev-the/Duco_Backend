@@ -8,7 +8,8 @@ const CreateProdcuts = async (req, res) => {
       image_url,     // should contain color, colorcode, url[], videolink, and content[]
       pricing,       // array of quantity/price_per/discount
       Desciptions,   // array of strings
-      subcategory    // ObjectId of subcategory
+      subcategory  ,
+      designtshirt  // ObjectId of subcategory
     } = req.body;
 
     // Validate essential fields (optional)
@@ -21,7 +22,8 @@ const CreateProdcuts = async (req, res) => {
       image_url,
       pricing,
       Desciptions,
-      subcategory
+      subcategory,
+      designtshirt
       // Stock will be auto-calculated via pre("save") hook
     });
 
