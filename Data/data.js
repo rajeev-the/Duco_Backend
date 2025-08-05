@@ -1,6 +1,6 @@
  const data = {
 
-  "classic_crew_tShirt" : [
+  "classic_crew_t-Shirt" : [
     {
       "color": "White",
       "sku": "MStRnHs-Wh-S",
@@ -3626,7 +3626,7 @@
       "gender": "Unisex"
     }
   ],
-  "Polo T-Shirt": [
+  "polo_t-shirt": [
     {
       "color": "Royal Blue",
       "sku": "MPHs-Rb-XL",

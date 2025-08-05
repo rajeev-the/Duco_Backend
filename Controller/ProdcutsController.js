@@ -1,18 +1,16 @@
-const Product = require('../DataBase/Models/ProductsModel')
-
+const Product = require('../DataBase/Models/ProductsModel');
 
 const CreateProdcuts = async (req, res) => {
   try {
     const {
       products_name,
-      image_url,     // should contain color, colorcode, url[], videolink, and content[]
-      pricing,       // array of quantity/price_per/discount
-      Desciptions,   // array of strings
-      subcategory  ,
-        // ObjectId of subcategory
+      image_url,
+      pricing,
+      Desciptions,
+      subcategory,
+      gender = "Male", // Default to Male if not provided
     } = req.body;
 
-    // Validate essential fields (optional)
     if (!products_name || !image_url || !pricing || !Desciptions || !subcategory) {
       return res.status(400).send({ message: "All required fields must be provided" });
     }
@@ -23,8 +21,7 @@ const CreateProdcuts = async (req, res) => {
       pricing,
       Desciptions,
       subcategory,
-      
-      // Stock will be auto-calculated via pre("save") hook
+      gender, // Now included
     });
 
     const savedProduct = await product.save();
@@ -42,8 +39,8 @@ const CreateProdcuts = async (req, res) => {
 
 const GetProducts = async (req, res) => {
   try {
-    const data = await Product.find(); // fetch all products
-    res.status(200).json(data); // return with status 200
+    const data = await Product.find();
+    res.status(200).json(data);
   } catch (error) {
     console.error("Error fetching products:", error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -51,42 +48,36 @@ const GetProducts = async (req, res) => {
 };
 
 const GetProductssingle = async (req, res) => {
-  const {prodcutsid} = req.params
+  const { productId } = req.params; // Renamed for clarity
   try {
-    const data = await Product.findById(prodcutsid); // fetch all products
-    res.status(200).json(data); // return with status 200
+    const data = await Product.findById(productId);
+    res.status(200).json(data);
   } catch (error) {
-    console.error("Error fetching products:", error);
+    console.error("Error fetching single product:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 const GetProductsSubcategory = async (req, res) => {
-
-      const {idsub} = req.params
-
+  const { idsub } = req.params;
   try {
-    const data = await Product.find({subcategory:idsub}); // fetch all products
-    res.status(200).json(data); // return with status 200
+    const data = await Product.find({ subcategory: idsub });
+    res.status(200).json(data);
   } catch (error) {
-    console.error("Error fetching products:", error);
+    console.error("Error fetching subcategory products:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-
-// PUT /api/products/:id
 const updateProduct = async (req, res) => {
   try {
     const productId = req.params.productId;
     const updates = req.body;
 
-    // Optional: Validate ObjectId
     if (!productId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: 'Invalid product ID' });
     }
 
-    // Optional: Recalculate Stock if image_url/content is provided
     if (updates.image_url) {
       let total = 0;
       updates.image_url.forEach((img) => {
@@ -115,14 +106,10 @@ const updateProduct = async (req, res) => {
   }
 };
 
-
-
-
-
 module.exports = {
-    CreateProdcuts,
-    GetProducts,
-    GetProductssingle,
-    GetProductsSubcategory,
-    updateProduct
-}
+  CreateProdcuts,
+  GetProducts,
+  GetProductssingle,
+  GetProductsSubcategory,
+  updateProduct
+};

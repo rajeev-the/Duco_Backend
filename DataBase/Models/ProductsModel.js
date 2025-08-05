@@ -40,6 +40,12 @@ const productSchema = new mongoose.Schema(
     },
 
     Desciptions: [{ type: String, required: true }],
+   gender: {
+  type: String,
+  required: true,
+  default: "Male"
+},
+
 
     subcategory: {
       type: mongoose.Schema.Types.ObjectId,
