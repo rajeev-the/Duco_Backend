@@ -73,8 +73,6 @@ const addAddressToUser = async (req, res) => {
   }
 };
 
-
-// 1. Send OTP
 const sendOtp = async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ message: 'Email is required' });
@@ -82,9 +80,20 @@ const sendOtp = async (req, res) => {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   try {
+    // Check if user already exists
+    const user = await User.findOne({ email });
+
+    // Save OTP in DB
     await Otp.create({ email, otp });
+
+    // Send email with OTP
     await sendOtpEmail(email, otp);
-    return res.status(200).json({ message: 'OTP sent to your Gmail' });
+
+    // Send response with user existence info
+    return res.status(200).json({
+      message: 'OTP sent to your Gmail',
+      userExists: !!user, // true or false
+    });
   } catch (err) {
     console.error('OTP send error:', err);
     return res.status(500).json({ message: 'Error sending OTP' });
