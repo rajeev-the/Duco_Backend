@@ -6,9 +6,10 @@ const AddressSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+
   mobileNumber: {
     type: String,
-    required: true
+
   },
   houseNumber: {
     type: String,
@@ -56,8 +57,10 @@ const UserSchema = new mongoose.Schema({
   },
   number: {
     type: String,
-    required: true
+   
   },
+    isVerified: { type: Boolean, default: false }, // OTP verification status
+  email: { type: String }, // Allow email login
   address: [AddressSchema]  // Array of address objects
 }, {
   timestamps: true
