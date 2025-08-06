@@ -12,6 +12,16 @@ const PriceSchema = new mongoose.Schema({
         required : true,
         min : 0
     },
+    currency:{
+        country:{
+            type:String,
+            required:true
+        },
+        toconvert:{
+            type:Number,
+            required:true
+        }
+    },
     time_stamp : {type : Date, default : Date.now}
 })
 
