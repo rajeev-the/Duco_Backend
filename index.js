@@ -17,6 +17,8 @@ const MoneyRoute = require("./Router/MoneyRoute.js")
 const ImageKitRoute = require("./Router/imagekit.js")
 const DesignRoute = require("./Router/DesignRoutes.js")
 const skuRoute = require("./Router/skuRoute.js")
+const paymentRoute = require("./Router/paymentRoutes.js")
+const completedorderRoutes = require("./Router/CompletedOrderRoutes.js")
 require('dotenv').config();
 
 
@@ -44,6 +46,8 @@ app.use("/money",MoneyRoute)
 app.use('/api/imagekit', ImageKitRoute);
 app.use('/api',DesignRoute ); // Add this line to include design routes
 app.use("/api/sku/get",skuRoute)
+app.use("/api/payment",paymentRoute)
+app.use("/api",completedorderRoutes)
 
 
 
