@@ -154,7 +154,7 @@ module.exports = async function placeQlinkOrder(orderData) {
   //   };
   // });
 
-  const  get_sku = getSKU(item.products_name || '', item.colortext || '', item.size || '', item.gender || '')
+  const  get_sku = getSKU(orderData.item.products_name || '', item.colortext || '', item.size || '', item.gender || '')
   const print_type_Id = await getPrintTypeIdForSku(get_sku,accessToken?.Accesstoken)
 
   const line_items = (orderData.items || []).map((item, idx) => {
