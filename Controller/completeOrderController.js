@@ -1,6 +1,15 @@
 const Razorpay = require('razorpay');
-const Order = require("../DataBase/Models/OrderModel");
-const placeQlinkOrder = require("./placeQlinkOrder");
+const Order = require('../DataBase/Models/OrderModel');
+
+// 🔧 Robust import + diagnostics
+const mod = require('./placeQlinkOrder');                 // <— check the path & FILENAME CASE!
+console.log('placeQlinkOrder module resolved from:', require.resolve('./placeQlinkOrder'));
+console.log('placeQlinkOrder module keys:', Object.keys(mod || {}));
+const placeQlinkOrder = mod?.placeQlinkOrder || mod?.default || mod;
+
+if (typeof placeQlinkOrder !== 'function') {
+  throw new Error('Bad import: placeQlinkOrder is not a function (export or path/case issue)');
+}
 
 // ✅ Use the correct env var names
 const razorpay = new Razorpay({
