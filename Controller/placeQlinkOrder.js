@@ -34,7 +34,7 @@ async function getAccessToken() {
       }
     );
       console.log(response)
-   return response.data.Accesstoken
+   return response.data
 
   } catch (error) {
     console.error("Error getting token:", error.response ? error.response.data : error.message);
@@ -103,7 +103,8 @@ async function getAccessToken() {
 
 module.exports = async function placeQlinkOrder(orderData) {
   const accessToken = await getAccessToken();
-  console.log(accessToken+"acctoken")
+  console.log(accessToken)
+  console.log(accessToken.ClientId)
   console.log(qs.stringify(accessToken))
 
   // Build line_items exactly as per Qikink cURL
