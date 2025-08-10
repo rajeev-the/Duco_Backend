@@ -34,7 +34,7 @@ async function getAccessToken() {
       }
     );
       console.log(response)
-   return response.Accesstoken
+   return response.data.Accesstoken
 
   } catch (error) {
     console.error("Error getting token:", error.response ? error.response.data : error.message);
