@@ -99,8 +99,6 @@ async function getAccessToken() {
 //   console.error('order FAIL:', e.response?.status, e.response?.data || e.message);
 // });
 
-const axios = require("axios");
-
 async function getPrintTypeIdForSku(sku, token) {
   try {
     const res = await axios.get(
