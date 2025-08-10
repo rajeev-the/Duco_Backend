@@ -175,7 +175,7 @@ module.exports = async function placeQlinkOrder(orderData) {
   return {
     search_from_my_products: 0,       // Always sending designs
     quantity: Number(item.quantity ?? 1),
-    print_type_id:  getPrintTypeIdForSku,                  // ✅ Always DTG
+    print_type_id:  print_type_Id,                  // ✅ Always DTG
     price: String(item.price ?? 0),
     sku: String(sku),
     designs   // Send as string
