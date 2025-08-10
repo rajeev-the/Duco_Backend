@@ -94,7 +94,6 @@ module.exports = async function placeQlinkOrder(orderData = {}) {
     gateway: orderData.gateway === 'COD' ? 'COD' : 'Prepaid', // match cURL ("COD" example)
     total_order_value: String(orderData.totalPay ?? orderData.total_order_value ?? 0),
     line_items,
-    add_ons,
     shipping_address,
   };
 
