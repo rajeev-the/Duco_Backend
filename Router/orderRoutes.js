@@ -1,7 +1,7 @@
 // routes/orderRoutes.js
 const express = require("express");
 const router = express.Router();
-const { getOrdersByUser } = require("../controllers/orderController");
+const { getOrdersByUser } = require("../Controller/OrderController");
 
 router.get("/order/user/:userId", getOrdersByUser);
 
