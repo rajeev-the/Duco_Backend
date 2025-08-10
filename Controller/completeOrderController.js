@@ -28,7 +28,7 @@ const completeOrder = async (req, res) => {
       address: orderData.address,
       user: orderData.user._id,
       razorpayPaymentId: paymentId,
-      qlinkOrderId: qlink.orderId,
+     
       status: 'paid',
     });
 
