@@ -1,6 +1,7 @@
 // Controller/placeQlinkOrder.js
 const axios = require('axios');
 const { getSKU } = require('./getsku');
+import qs from "qs";
 
 const QIKINK_TOKEN_URL = 'https://sandbox.qikink.com/api/token';
 const QIKINK_ORDER_URL = 'https://sandbox.qikink.com/api/order/create';
