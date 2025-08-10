@@ -20,6 +20,7 @@ const DesignRoute = require("./Router/DesignRoutes.js")
 
 const paymentRoute = require("./Router/paymentRoutes.js")
 const completedorderRoutes = require("./Router/CompletedOrderRoutes.js")
+const orderRoutes = require("./Router/orderRoutes.js")
 require('dotenv').config();
 
 
@@ -55,6 +56,7 @@ app.use('/api/imagekit', ImageKitRoute);
 app.use('/api',DesignRoute ); // Add this line to include design routes
 app.use("/api/payment",paymentRoute)
 app.use("/api",completedorderRoutes)
+app.use("/api",orderRoutes)
 
 
 
