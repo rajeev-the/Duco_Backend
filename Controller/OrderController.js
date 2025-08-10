@@ -20,3 +20,16 @@ exports.getOrdersByUser = async (req, res) => {
     return res.status(500).json({ error: "Failed to fetch orders" });
   }
 };
+
+
+
+// Get all orders sorted by newest first
+exports.getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find().sort({ createdAt: -1 }); // -1 means descending
+    res.json(orders);
+  } catch (err) {
+    console.error("Error fetching orders:", err);
+    res.status(500).json({ error: "Failed to fetch orders" });
+  }
+};
