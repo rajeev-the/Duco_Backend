@@ -21,11 +21,6 @@ const completeOrder = async (req, res) => {
     if (!payment || payment.status !== 'captured') {
       throw new Error(`Payment not captured (status: ${payment?.status || 'unknown'})`);
     }
-
-    console.log('typeof placeQlinkOrder =', typeof placeQlinkOrder);
-        qlink = await placeQlinkOrder(orderData);
-    if (!qlink?.orderId) throw new Error("Qlink order failed");
-
     // 3) Persist order
     order = await Order.create({
       products: orderData.items,       // or map to lean items if your schema is strict
@@ -41,11 +36,6 @@ const completeOrder = async (req, res) => {
 
   } catch (err) {
     // 4) Rollback best-effort
-    if (qlink?.orderId) {
-      try {
-        // await cancelQlinkOrder(qlink.orderId); // optional if you implement this
-      } catch {}
-    }
 
     if (payment?.id) {
       try {

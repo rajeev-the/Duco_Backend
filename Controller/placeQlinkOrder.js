@@ -168,7 +168,7 @@ async function buildLineItems(orderData, token) {
       getSKU(item.products_name || '', item.colortext || '', item.size || '', item.gender || '');
 
     // ✅ Fetch print_type_id from Qikink API
-    const printTypeId = await getPrintTypeIdForSku(sku, token);
+console.log(sku)
 
     const designs = (item.designs || item.design || []).map((d) => ({
       design_code: orderData._id || 'design-' + idx,
@@ -182,7 +182,7 @@ async function buildLineItems(orderData, token) {
     lineItems.push({
       search_from_my_products: 0, // Always sending designs
       quantity: Number(item.quantity ?? 1),
-      print_type_id: printTypeId, // ✅ Dynamically fetched
+      print_type_id: 1, // ✅ Dynamically fetched
       price: String(item.price ?? 0),
       sku: String(sku),
       designs
