@@ -140,8 +140,8 @@ module.exports = async function placeQlinkOrder(orderData) {
 
   const designs = (item.designs || item.design || []).map((d) => ({
     design_code: orderData._id || 'design-' + idx,
-    width_inches: String(d.width_inches ?? 20),
-    height_inches: String(d.height_inches ?? 20),
+    width_inches: String(d.width_inches ?? 12),
+    height_inches: String(d.height_inches ?? 12),
     placement_sku: VIEW_TO_PLACEMENT[(d.view || '').toLowerCase()] || 'fr',
     design_link: d.uploadedImage || d.url || '',
     mockup_link: d.mockupUrl || d.url || '',
