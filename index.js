@@ -29,7 +29,7 @@ const port = process.env.PORT || 3000;
 
 
 
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 app.use(cors());
 
 
