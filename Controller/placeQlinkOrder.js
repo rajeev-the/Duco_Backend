@@ -1,4 +1,5 @@
 const axios = require('axios');
+const {getSKU} = require("./getsku")
 
 
 const QIKINK_TOKEN_URL = 'https://sandbox.qikink.com/api/token';
@@ -40,6 +41,8 @@ const getQikinkAccessToken = async () => {
  * Places a Qikink order using dynamic token
  * @param {Object} orderData - formatted data from frontend
  */
+
+
 const placeQlinkOrder = async (orderData) => {
   try {
     const accessToken = await getQikinkAccessToken();
@@ -47,28 +50,28 @@ const placeQlinkOrder = async (orderData) => {
 
     const payload = {
       shipping: {
-        first_name: orderData.shippingAddress.name,
-        phone: orderData.shippingAddress.phone,
-        city: orderData.shippingAddress.city,
-        zip: orderData.shippingAddress.pincode,
-        province: orderData.shippingAddress.state || '',
+        first_name: orderData.address.fullName,
+        phone: orderData.address.mobileNumber,
+        city: orderData.address.city,
+        zip: orderData.address.pincode,
+        province: orderData.address.state || '',
         country_code: 'IN',
-        email: orderData.shippingAddress.email || '',
+        email: orderData.user.email || '',
       },
       payment_type: 'Prepaid',
       shipping_type: 'Qikink Domestic Shipping',
-      total_order_value: orderData.totalAmount.toString(),
+      total_order_value: orderData.totalPay.toString(),
       line_items: orderData.items.map(item => ({
-        sku: item.sku,
-        quantity: item.qty.toString(),
+        sku: getSKU(item.products_name,item.colortext,item.size,item.gender	),
+        quantity: item.quantity.toString(),
         price: item.price.toString(),
         designs: item.designs.map(design => ({
-          design_code: design.code,
-          placement: design.placement,
+          design_code:orderData._id,
+          placement: design.view,
         //   height_inches: design.height,
         //   width_inches: design.width,
-          design_url: design.design_url,
-          mockup_url: design.mockup_url || null,
+          design_url: design.uploadedImage ? design.uploadedImage:design.url ,
+          mockup_url: design.url || null,
         }))
       }))
     };

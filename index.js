@@ -1,6 +1,7 @@
 const express = require("express")
 
 const app = express();
+const {getSKU} = require("./Controller/getsku.js")
 const conntectDb =  require("./DataBase/DBConnection")
 
 const cors = require("cors")
@@ -16,7 +17,7 @@ const CategoryRoute =  require("./Router/CategoryRoute.js")
 const MoneyRoute = require("./Router/MoneyRoute.js")
 const ImageKitRoute = require("./Router/imagekit.js")
 const DesignRoute = require("./Router/DesignRoutes.js")
-const skuRoute = require("./Router/skuRoute.js")
+
 const paymentRoute = require("./Router/paymentRoutes.js")
 const completedorderRoutes = require("./Router/CompletedOrderRoutes.js")
 require('dotenv').config();
@@ -34,6 +35,14 @@ app.use(cors());
 
 conntectDb()
 
+
+// => { sku: 'MStRnHs-Wh-S', description: 'Male Standard Crew T-Shirt | US21 White S' }
+
+
+
+
+
+
 app.get('/' , (req,res)=>{
  
      res.send("hello")
@@ -45,7 +54,6 @@ app.use("/category",CategoryRoute)
 app.use("/money",MoneyRoute)
 app.use('/api/imagekit', ImageKitRoute);
 app.use('/api',DesignRoute ); // Add this line to include design routes
-app.use("/api/sku/get",skuRoute)
 app.use("/api/payment",paymentRoute)
 app.use("/api",completedorderRoutes)
 

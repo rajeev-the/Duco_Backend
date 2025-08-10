@@ -28,7 +28,11 @@ const completeOrder = async (req, res) => {
 
     // 3. Save Order to MongoDB
     order = await Order.create({
-      ...orderData,
+      products:orderData.items,
+      price:orderData.totalPay
+      ,
+      address:orderData.address,
+      user:orderData.user._id,
       razorpayPaymentId: paymentId,
       qlinkOrderId: qlink.orderId,
     });

@@ -1,8 +1,8 @@
- const data = {
+ const  rawStore = {
 
-  "classic_crew_t-Shirt" : [
+  "classic-crew-t-shirt" : [
     {
-      "color": "White",
+      "color": "white",
       "sku": "MStRnHs-Wh-S",
       "product_description": "Male Standard Crew T-Shirt | US21 White S",
       "gender": "Male"
@@ -4029,5 +4029,10 @@
   
  
 }
+
+module.exports = rawStore;
+
+
+
 
 
