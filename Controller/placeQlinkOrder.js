@@ -108,29 +108,55 @@ module.exports = async function placeQlinkOrder(orderData) {
   console.log(accessToken.Accesstoken)
 
   // Build line_items exactly as per Qikink cURL
+  // const line_items = (orderData.items || []).map((item, idx) => {
+  //   const sku =
+  //     item.sku ||
+  //     getSKU(item.products_name || '', item.colortext || '', item.size || '', item.gender || '');
+
+  //   const designs = (item.designs || item.design || []).map((d) => ({
+  //     design_code: orderData._id || 'design-' + idx,
+  //     width_inches: String(d.width_inches ?? 12),
+  //     height_inches: String(d.height_inches ?? 12),
+  //     placement_sku: VIEW_TO_PLACEMENT[(d.view || '').toLowerCase()] || 'fr',
+  //     design_link: d.uploadedImage || d.url || '',
+  //     mockup_link: d.mockupUrl || d.url || '',
+  //   }));
+
+  //   return {
+  //     search_from_my_products: 0,
+  //     quantity:(item.quantity ?? 1),
+  //     print_type_id: Number(item.print_type_id ?? 1),
+  //     price: String(item.price ?? 0),
+  //     sku:String(sku),
+  //     designs,
+  //   };
+  // });
+
+
   const line_items = (orderData.items || []).map((item, idx) => {
-    const sku =
-      item.sku ||
-      getSKU(item.products_name || '', item.colortext || '', item.size || '', item.gender || '');
+  const sku =
+    item.sku ||
+    getSKU(item.products_name || '', item.colortext || '', item.size || '', item.gender || '');
 
-    const designs = (item.designs || item.design || []).map((d) => ({
-      design_code: orderData._id || 'design-' + idx,
-      width_inches: String(d.width_inches ?? 12),
-      height_inches: String(d.height_inches ?? 12),
-      placement_sku: VIEW_TO_PLACEMENT[(d.view || '').toLowerCase()] || 'fr',
-      design_link: d.uploadedImage || d.url || '',
-      mockup_link: d.mockupUrl || d.url || '',
-    }));
+  const designs = (item.designs || item.design || []).map((d) => ({
+    design_code: orderData._id || 'design-' + idx,
+    width_inches: String(d.width_inches ?? 20),
+    height_inches: String(d.height_inches ?? 20),
+    placement_sku: VIEW_TO_PLACEMENT[(d.view || '').toLowerCase()] || 'fr',
+    design_link: d.uploadedImage || d.url || '',
+    mockup_link: d.mockupUrl || d.url || '',
+  }));
 
-    return {
-      search_from_my_products: 0,
-      quantity:(item.quantity ?? 1),
-      print_type_id: Number(item.print_type_id ?? 1),
-      price: String(item.price ?? 0),
-      sku:String(sku),
-      designs,
-    };
-  });
+  return {
+    search_from_my_products: 0,       // Always sending designs
+    quantity: Number(item.quantity ?? 1),
+    print_type_id: 1,                  // ✅ Always DTG
+    price: String(item.price ?? 0),
+    sku: String(sku),
+    designs   // Send as string
+  };
+});
+
 
   // Shipping address per cURL
   const shipping_address = {
