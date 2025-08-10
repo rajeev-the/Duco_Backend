@@ -1,15 +1,6 @@
 const Razorpay = require('razorpay');
 const Order = require('../DataBase/Models/OrderModel');
-
-// 🔧 Robust import + diagnostics
-const mod = require('./placeQlinkOrder');                 // <— check the path & FILENAME CASE!
-console.log('placeQlinkOrder module resolved from:', require.resolve('./placeQlinkOrder'));
-console.log('placeQlinkOrder module keys:', Object.keys(mod || {}));
-const placeQlinkOrder = mod?.placeQlinkOrder || mod?.default || mod;
-
-if (typeof placeQlinkOrder !== 'function') {
-  throw new Error('Bad import: placeQlinkOrder is not a function (export or path/case issue)');
-}
+const placeQlinkOrder = require('./placeQlinkOrder');
 
 // ✅ Use the correct env var names
 const razorpay = new Razorpay({
@@ -31,8 +22,8 @@ const completeOrder = async (req, res) => {
       throw new Error(`Payment not captured (status: ${payment?.status || 'unknown'})`);
     }
 
-    // 2) Place Qikink order
-    qlink = await placeQlinkOrder(orderData);
+    console.log('typeof placeQlinkOrder =', typeof placeQlinkOrder);
+        qlink = await placeQlinkOrder(orderData);
     if (!qlink?.orderId) throw new Error("Qlink order failed");
 
     // 3) Persist order
