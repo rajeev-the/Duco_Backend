@@ -34,8 +34,7 @@ async function getAccessToken() {
       }
     );
 
-    console.log("Access Token:", response.data.Accesstoken);
-    console.log("Expires In (seconds):", response.data.expires_in);
+   return response.Accesstoken
 
   } catch (error) {
     console.error("Error getting token:", error.response ? error.response.data : error.message);
@@ -43,7 +42,66 @@ async function getAccessToken() {
 }
 
 
-module.exports = async function placeQlinkOrder(orderData = {}) {
+
+// (async () => {
+//   const token = 
+//   console.log('token len:', token.length);
+
+//   const clientId =CLIENT_ID
+//   console.log('clientId env:', clientId);
+
+//   const resp = await axios.post(
+//     'https://sandbox.qikink.com/api/order/create',
+//     {
+//       order_number: 'api1',
+//       qikink_shipping: '1',
+//       gateway: 'COD',
+//       total_order_value: '1',
+//       line_items: [{
+//         search_from_my_products: 0,
+//         quantity: '1',
+//         print_type_id: 1,
+//         price: '1',
+//         sku: 'MVnHs-Wh-S',
+//         designs: [{
+//           design_code: 'iPhoneXR',
+//           width_inches: '14',
+//           height_inches: '13',
+//           placement_sku: 'fr',
+//           design_link: 'https://www.sample_design.com/sample_image.png',
+//           mockup_link: 'https://www.sample_mockup.com/sample_image.png'
+//         }]
+//       }],
+//       shipping_address: {
+//         first_name: 'first_name',
+//         last_name: 'last_name',
+//         address1: 'addr...',
+//         phone: '9876543210',
+//         email: 'sample@gmail.com',
+//         city: 'coimbatore',
+//         zip: '641004',
+//         province: 'ABC',
+//         country_code: 'IN'
+//       }
+//     },
+//     {
+//       headers: {
+//         ClientId: clientId,           // MUST be 447778 in your case
+//         Accesstoken: token,           // MUST be the token from /api/token
+//         'Content-Type': 'application/json'
+//       },
+//       timeout: 20000
+//     }
+//   );
+
+//   console.log('order OK:', resp.data);
+// })().catch(e => {
+//   console.error('order FAIL:', e.response?.status, e.response?.data || e.message);
+// });
+
+
+
+module.exports = async function placeQlinkOrder(orderData) {
   const accessToken = await getAccessToken();
 
   // Build line_items exactly as per Qikink cURL
@@ -97,11 +155,7 @@ module.exports = async function placeQlinkOrder(orderData = {}) {
     shipping_address,
   };
 
-  // Debug what we’re sending (no secrets)
-  console.log('[QIKINK] POST', QIKINK_ORDER_URL);
-  console.log('[QIKINK] Headers: ClientId present?', !!CLIENT_ID, 'Accesstoken present?', !!accessToken);
-  console.log('[QIKINK] Payload keys:', Object.keys(payload));
-  console.log('[QIKINK] line_items count:', line_items.length);
+
 
   try {
     const response = await axios.post(QIKINK_ORDER_URL, payload, {
