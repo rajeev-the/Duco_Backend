@@ -29,7 +29,7 @@ const completeOrder = async (req, res) => {
       user: orderData.user._id,
       razorpayPaymentId: paymentId,
      
-      status: 'paid',
+      status:'Pending',
     });
 
     return res.status(200).json({ success: true, order });
