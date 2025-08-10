@@ -53,3 +53,37 @@ exports.getOrderById = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch order" });
   }
 };
+
+
+
+exports.updateOrderStatus = async (req, res) => {
+  const { id } = req.params; // orderId from URL
+  const { status } = req.body;
+
+  try {
+    // ✅ Validate status
+    const validStatuses = ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status value" });
+    }
+
+    // ✅ Find and update
+    const order = await Order.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    res.json({
+      message: "Order status updated successfully",
+      order
+    });
+  } catch (err) {
+    console.error("Error updating order status:", err);
+    res.status(500).json({ error: "Failed to update order status" });
+  }
+};
