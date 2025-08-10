@@ -146,11 +146,13 @@ module.exports = async function placeQlinkOrder(orderData) {
     province: orderData.address?.state || '',
     country_code: 'IN',
   };
-
+const part1 = String(orderData.items?.[0]?.id || '').slice(0, 5);
+const part2 = String(orderData.user?._id || '').slice(0, 5);
+const shortOrderNo = (part1 + part2).replace(/[^A-Za-z0-9]/g, '');
 
 
   const payload = {
-    order_number: orderData.order_number || `api-${Date.now()}`,
+    order_number:shortOrderNo.slice(0, 15),
     qikink_shipping: String(orderData.qikink_shipping ?? 1), // "1" per cURL
     gateway: orderData.gateway === 'COD' ? 'COD' : 'Prepaid', // match cURL ("COD" example)
     total_order_value: String(orderData.totalPay ?? orderData.total_order_value ?? 0),
