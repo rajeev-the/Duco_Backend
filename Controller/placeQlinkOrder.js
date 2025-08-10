@@ -16,41 +16,34 @@ const VIEW_TO_PLACEMENT = {
   right: 'rt',
 };
 
-async function getQikinkAccessToken() {
-  const tryOnce = async (paramsObj, label) => {
-    try {
-      const body = new URLSearchParams(paramsObj);
-      const resp = await axios.post(QIKINK_TOKEN_URL, body, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        timeout: 15000,
-      });
-      const token = resp.data?.Accesstoken;
-      if (!token) throw new Error(`No Accesstoken in response: ${JSON.stringify(resp.data)}`);
-      return token;
-    } catch (err) {
-      console.error(`[QIKINK] token ${label} failed`, err.response?.status, err.response?.data || err.message);
-      throw err;
-    }
-  };
-
+async function getAccessToken() {
   try {
-    return await tryOnce({ ClientId: CLIENT_ID, ClientSecret: CLIENT_SECRET }, 'camel');
-  } catch (e1) {
-    try {
-      return await tryOnce({ client_id: CLIENT_ID, client_secret: CLIENT_SECRET }, 'snake');
-    } catch (e2) {
-      const status = e2.response?.status || e1.response?.status || 400;
-      const body = e2.response?.data || e1.response?.data;
-      const err = new Error(`[QIKINK] Token fetch failed. primary=${e1.response?.status||'n/a'} secondary=${e2.response?.status||'n/a'} body=${JSON.stringify(body)}`);
-      err.status = status;
-      throw err;
-    }
+    const data = qs.stringify({
+      ClientId:  process.env.QIKINK_CLIENT_ID, // replace with your real clientId
+      client_secret: process.env.QIKINK_CLIENT_SECRET // replace with your real client_secret
+    });
+
+    const response = await axios.post(
+      "https://sandbox.qikink.com/api/token",
+      data,
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        }
+      }
+    );
+
+    console.log("Access Token:", response.data.Accesstoken);
+    console.log("Expires In (seconds):", response.data.expires_in);
+
+  } catch (error) {
+    console.error("Error getting token:", error.response ? error.response.data : error.message);
   }
 }
 
 
 module.exports = async function placeQlinkOrder(orderData = {}) {
-  const accessToken = await getQikinkAccessToken();
+  const accessToken = await getAccessToken();
 
   // Build line_items exactly as per Qikink cURL
   const line_items = (orderData.items || []).map((item, idx) => {
