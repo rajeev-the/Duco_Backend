@@ -3,7 +3,7 @@ const axios = require('axios');
 const { getSKU } = require('./getsku');
 
 const QIKINK_TOKEN_URL = 'https://sandbox.qikink.com/api/token';
-const QIKINK_ORDER_URL = 'https://sandbox.qikink.com/api/order';
+const QIKINK_ORDER_URL = 'https://sandbox.qikink.com/api/order/create';
 const CLIENT_ID = process.env.QIKINK_CLIENT_ID;
 const CLIENT_SECRET = process.env.QIKINK_CLIENT_SECRET;
 
