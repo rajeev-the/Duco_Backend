@@ -80,4 +80,4 @@ const placeQlinkOrder = async (orderData) => {
   }
 };
 
-module.exports = { placeQlinkOrder};
+module.exports = placeQlinkOrder;
