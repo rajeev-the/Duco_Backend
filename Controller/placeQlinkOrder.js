@@ -161,7 +161,7 @@ module.exports = async function placeQlinkOrder(orderData) {
     const response = await axios.post(QIKINK_ORDER_URL, payload, {
       headers: {
         ClientId: CLIENT_ID,
-        Accesstoken: accessToken,
+        Accesstoken: qs.stringify(accessToken),
         'Content-Type': 'application/json',
       },
       
