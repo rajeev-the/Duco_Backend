@@ -110,7 +110,7 @@ module.exports = async function placeQlinkOrder(orderData = {}) {
         Accesstoken: accessToken,
         'Content-Type': 'application/json',
       },
-      timeout: 20000,
+      
     });
 
     // On success Qikink usually returns an order id or object
