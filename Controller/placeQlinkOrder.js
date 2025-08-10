@@ -99,6 +99,30 @@ async function getAccessToken() {
 //   console.error('order FAIL:', e.response?.status, e.response?.data || e.message);
 // });
 
+const axios = require("axios");
+
+async function getPrintTypeIdForSku(sku, token) {
+  try {
+    const res = await axios.get(
+      `https://api.qikink.com/api/v1/products/${sku}`, // Adjust endpoint if needed
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    // Check if product data is valid
+    if (res.data && res.data.print_type_id) {
+      return res.data.print_type_id;
+    } else {
+      throw new Error(`No print_type_id found for SKU: ${sku}`);
+    }
+  } catch (err) {
+    console.error(`Failed to fetch print_type_id for SKU ${sku}:`, err.message);
+    throw err;
+  }
+}
 
 
 module.exports = async function placeQlinkOrder(orderData) {
@@ -132,11 +156,12 @@ module.exports = async function placeQlinkOrder(orderData) {
   //   };
   // });
 
+  const  get_sku = getSKU(item.products_name || '', item.colortext || '', item.size || '', item.gender || '')
+  const print_type_Id = await getPrintTypeIdForSku(get_sku,accessToken?.Accesstoken)
 
   const line_items = (orderData.items || []).map((item, idx) => {
   const sku =
-    item.sku ||
-    getSKU(item.products_name || '', item.colortext || '', item.size || '', item.gender || '');
+    item.sku || get_sku;
 
   const designs = (item.designs || item.design || []).map((d) => ({
     design_code: orderData._id || 'design-' + idx,
@@ -150,7 +175,7 @@ module.exports = async function placeQlinkOrder(orderData) {
   return {
     search_from_my_products: 0,       // Always sending designs
     quantity: Number(item.quantity ?? 1),
-    print_type_id: 1,                  // ✅ Always DTG
+    print_type_id:  getPrintTypeIdForSku,                  // ✅ Always DTG
     price: String(item.price ?? 0),
     sku: String(sku),
     designs   // Send as string
