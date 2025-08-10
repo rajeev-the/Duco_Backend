@@ -33,7 +33,7 @@ async function getAccessToken() {
         }
       }
     );
-
+      console.log(response)
    return response.Accesstoken
 
   } catch (error) {
@@ -103,6 +103,8 @@ async function getAccessToken() {
 
 module.exports = async function placeQlinkOrder(orderData) {
   const accessToken = await getAccessToken();
+  console.log(accessToken+"acctoken")
+  console.log(qs.stringify(accessToken))
 
   // Build line_items exactly as per Qikink cURL
   const line_items = (orderData.items || []).map((item, idx) => {
