@@ -157,31 +157,41 @@ module.exports = async function placeQlinkOrder(orderData) {
   // });
 
 
+async function buildLineItems(orderData, token) {
+  const lineItems = [];
 
-  const line_items = (orderData.items || []).map((item, idx) => {
-  const sku =
-    item.sku ||
-    getSKU(item.products_name || '', item.colortext || '', item.size || '', item.gender || '');
+  for (let idx = 0; idx < (orderData.items || []).length; idx++) {
+    const item = orderData.items[idx];
 
-  const designs = (item.designs || item.design || []).map((d) => ({
-    design_code: orderData._id || 'design-' + idx,
-    width_inches: String(d.width_inches ?? 12),
-    height_inches: String(d.height_inches ?? 12),
-    placement_sku: VIEW_TO_PLACEMENT[(d.view || '').toLowerCase()] || 'fr',
-    design_link: d.uploadedImage || d.url || '',
-    mockup_link: d.mockupUrl || d.url || '',
-  }));
+    const sku =
+      item.sku ||
+      getSKU(item.products_name || '', item.colortext || '', item.size || '', item.gender || '');
 
-  return {
-    search_from_my_products: 0,       // Always sending designs
-    quantity: Number(item.quantity ?? 1),
-    print_type_id: 17,                  // ✅ Always DTG
-    price: String(item.price ?? 0),
-    sku: String(sku),
-    designs   // Send as string
-  };
-});
+    // ✅ Fetch print_type_id from Qikink API
+    const printTypeId = await getPrintTypeIdForSku(sku, token);
 
+    const designs = (item.designs || item.design || []).map((d) => ({
+      design_code: orderData._id || 'design-' + idx,
+      width_inches: String(d.width_inches ?? 12),
+      height_inches: String(d.height_inches ?? 12),
+      placement_sku: VIEW_TO_PLACEMENT[(d.view || '').toLowerCase()] || 'fr',
+      design_link: d.uploadedImage || d.url || '',
+      mockup_link: d.mockupUrl || d.url || '',
+    }));
+
+    lineItems.push({
+      search_from_my_products: 0, // Always sending designs
+      quantity: Number(item.quantity ?? 1),
+      print_type_id: printTypeId, // ✅ Dynamically fetched
+      price: String(item.price ?? 0),
+      sku: String(sku),
+      designs
+    });
+  }
+
+  return lineItems;
+}
+const line_items = await buildLineItems(orderData,accessToken.Accesstoken)
 
   // Shipping address per cURL
   const shipping_address = {
