@@ -124,10 +124,10 @@ module.exports = async function placeQlinkOrder(orderData) {
 
     return {
       search_from_my_products: 0,
-      quantity: String(item.quantity ?? 1),
+      quantity:(item.quantity ?? 1),
       print_type_id: Number(item.print_type_id ?? 1),
       price: String(item.price ?? 0),
-      sku,
+      sku:String(sku),
       designs,
     };
   });
