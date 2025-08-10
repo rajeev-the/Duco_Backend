@@ -103,9 +103,9 @@ async function getAccessToken() {
 
 module.exports = async function placeQlinkOrder(orderData) {
   const accessToken = await getAccessToken();
-  console.log(accessToken)
+
   console.log(accessToken.ClientId)
-  console.log(qs.stringify(accessToken))
+  console.log(qs.stringify(accessToken.Accesstoken))
 
   // Build line_items exactly as per Qikink cURL
   const line_items = (orderData.items || []).map((item, idx) => {
@@ -163,8 +163,8 @@ module.exports = async function placeQlinkOrder(orderData) {
   try {
     const response = await axios.post(QIKINK_ORDER_URL, payload, {
       headers: {
-        ClientId: CLIENT_ID,
-        Accesstoken: qs.stringify(accessToken),
+        ClientId: accessToken.ClientId,
+        Accesstoken: qs.stringify(accessToken.Accesstoken),
         'Content-Type': 'application/json',
       },
       
