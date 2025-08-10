@@ -1,6 +1,6 @@
 const Razorpay = require('razorpay');
 const Order = require('../DataBase/Models/OrderModel');
-const placeQlinkOrder = require('./placeQlinkOrder');
+
 
 // ✅ Use the correct env var names
 const razorpay = new Razorpay({
@@ -12,7 +12,7 @@ const completeOrder = async (req, res) => {
   const { paymentId, orderData } = req.body;
 
   let payment = null;
-  let qlink = null;
+
   let order = null;
 
   try {
