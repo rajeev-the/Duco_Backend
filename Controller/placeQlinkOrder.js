@@ -99,7 +99,7 @@ async function getAccessToken() {
 //   console.error('order FAIL:', e.response?.status, e.response?.data || e.message);
 // });
 
-const axios = require("axios");
+
 
 async function getPrintTypeIdForSku(sku, token) {
   try {
@@ -175,7 +175,7 @@ module.exports = async function placeQlinkOrder(orderData) {
   return {
     search_from_my_products: 0,       // Always sending designs
     quantity: Number(item.quantity ?? 1),
-    print_type_id:  2,                  // ✅ Always DTG
+    print_type_id: 17,                  // ✅ Always DTG
     price: String(item.price ?? 0),
     sku: String(sku),
     designs   // Send as string
