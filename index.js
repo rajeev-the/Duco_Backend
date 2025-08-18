@@ -18,9 +18,12 @@ const MoneyRoute = require("./Router/MoneyRoute.js")
 const ImageKitRoute = require("./Router/imagekit.js")
 const DesignRoute = require("./Router/DesignRoutes.js")
 
+
 const paymentRoute = require("./Router/paymentRoutes.js")
 const completedorderRoutes = require("./Router/CompletedOrderRoutes.js")
 const orderRoutes = require("./Router/orderRoutes.js")
+const analytics = require("./Router/analytics")
+
 require('dotenv').config();
 
 
@@ -57,6 +60,13 @@ app.use('/api',DesignRoute ); // Add this line to include design routes
 app.use("/api/payment",paymentRoute)
 app.use("/api",completedorderRoutes)
 app.use("/api",orderRoutes)
+app.use("/api",analytics)
+app.get("/api/ip", async (req, res) => {
+  const response = await fetch("http://ip-api.com/json");
+  const data = await response.json();
+  res.json(data);
+});
+
 
 
 
