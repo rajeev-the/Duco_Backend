@@ -57,21 +57,42 @@ exports.getOrderById = async (req, res) => {
 
 
 exports.updateOrderStatus = async (req, res) => {
-  const { id } = req.params; // orderId from URL
-  const { status } = req.body;
+  const { id } = req.params;
+  const { status, qlinkOrderId } = req.body || {};
 
   try {
-    // ✅ Validate status
-    const validStatuses = ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: "Invalid status value" });
+    // ✅ Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid order ID' });
     }
 
-    // ✅ Find and update
+    // ✅ Build a safe patch
+    const patch = {};
+    const validStatuses = ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
+
+    // status (optional)
+    if (typeof status !== 'undefined') {
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status value" });
+      }
+      patch.status = status;
+    }
+
+    // qlinkOrderId (optional) — normalize "" -> null
+    if (Object.prototype.hasOwnProperty.call(req.body, 'qlinkOrderId')) {
+      const normalized = (qlinkOrderId ?? '').toString().trim();
+      patch.qlinkOrderId = normalized.length ? normalized : null;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ error: "Nothing to update" });
+    }
+
+    // ✅ Update
     const order = await Order.findByIdAndUpdate(
       id,
-      { status },
-      { new: true }
+      { $set: patch },
+      { new: true, runValidators: true }
     );
 
     if (!order) {
@@ -79,11 +100,12 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     res.json({
-      message: "Order status updated successfully",
-      order
+      message: "Order updated successfully",
+      updatedFields: Object.keys(patch),
+      order,
     });
   } catch (err) {
-    console.error("Error updating order status:", err);
-    res.status(500).json({ error: "Failed to update order status" });
+    console.error("Error updating order:", err);
+    res.status(500).json({ error: "Failed to update order" });
   }
 };
