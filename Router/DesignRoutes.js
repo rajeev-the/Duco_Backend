@@ -6,7 +6,7 @@ const { createDesign, deleteDesign,getDesignsByUser } = require('../Controller/D
 
 router.post('/designs', createDesign);
 router.get('/designs/user/:userId', getDesignsByUser);
-
+router.get('/designs/user/:userId/:productId', getDesignsByUser);
 router.delete('/designs/:id', deleteDesign);
 
 module.exports = router;

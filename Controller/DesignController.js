@@ -35,14 +35,23 @@ const deleteDesign = async (req, res) => {
     res.status(500).json({ message: 'Server Error', error });
   }
 };
+
 const getDesignsByUser = async (req, res) => {
   try {
-    const { userId } = req.params;
-    const designs = await Design.find({ user: userId }).sort({ createdAt: -1 });
-    res.status(200).json(designs);
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch designs', error });
+    const { userId, productId } = req.params;
+
+    let query = { user: userId };
+    if (productId) {
+      query.products = productId;
+    }
+
+    const designs = await Design.find(query).sort({ createdAt: -1 });
+
+    res.json(designs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
+
 
 module.exports = { createDesign, deleteDesign  ,getDesignsByUser};
