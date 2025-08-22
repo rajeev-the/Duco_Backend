@@ -1,7 +1,7 @@
 const express = require("express")
 
 const router = express.Router();
-const {sendOtp ,verifyOtp ,addAddressToUser} = require("../Controller/UserController")
+const {sendOtp ,verifyOtp ,addAddressToUser,getUser} = require("../Controller/UserController")
 
  
 router.get('/',(req,res)=>{
@@ -14,6 +14,7 @@ router.get('/',(req,res)=>{
 router.post('/send-otp', sendOtp)
 router.post('/verify-otp', verifyOtp);
 router.post('/add-address', addAddressToUser);
+router.get("/get",getUser);
 
 
 

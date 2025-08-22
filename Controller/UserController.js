@@ -127,12 +127,26 @@ const verifyOtp = async (req, res) => {
   return res.status(200).json({ message: 'Login/Signup successful', user });
 };
 
+const getUser = async (req,res)=>{
+    
+  try {
+
+    const data1 = await User.find();
+    res.status(200).json(data1);
+    
+  } catch (error) {
+    console.log(error)
+    
+  }
+
+}
 
 module.exports = {
  
     addAddressToUser,
     sendOtp,
-    verifyOtp
+    verifyOtp,
+    getUser
 }
 
 
