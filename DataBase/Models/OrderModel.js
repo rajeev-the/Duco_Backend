@@ -63,8 +63,8 @@ const OrderSchema = new Schema({
   },
   paymantmode: {
     type: String,
-    enum: ["Online", "Bank Transfer"],
-    default: "Online"
+    enum: ["online", "netbanking"],
+    default: "online"
   },
 
   qlinkOrderId: {
