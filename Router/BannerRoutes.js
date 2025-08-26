@@ -1,3 +1,8 @@
+const express = require('express')
+const Banner = require("../DataBase/Models/BannerModel")
+
+const router = express.Router();
+
 router.post("/banners", async (req, res) => {
   try {
     const { link } = req.body;
