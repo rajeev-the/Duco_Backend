@@ -1,7 +1,7 @@
 const express = require("express")
 
 const app = express();
-const {getSKU} = require("./Controller/getsku.js")
+
 const conntectDb =  require("./DataBase/DBConnection")
 
 const cors = require("cors")
@@ -24,6 +24,10 @@ const completedorderRoutes = require("./Router/CompletedOrderRoutes.js")
 const orderRoutes = require("./Router/orderRoutes.js")
 const analytics = require("./Router/analytics")
 
+const { addToStorage,
+  getStorage,
+  clearStorage,
+  removeByValue,} = require("./Data/storage")
 require('dotenv').config();
 
 
@@ -65,6 +69,53 @@ app.get("/api/ip", async (req, res) => {
   const response = await fetch("http://ip-api.com/json");
   const data = await response.json();
   res.json(data);
+});
+
+
+
+//storage of Banner data 
+
+// List all strings
+app.get("/api/strings", (req, res) => {
+  res.json({ storage: getStorage() });
+});
+
+// Add a string
+app.post("/api/strings", (req, res) => {
+  try {
+    const { text } = req.body;
+    addToStorage(text);
+    res.status(201).json({
+      message: "Added",
+      storage: getStorage(),
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Remove by exact value (body: { text: "..." })
+app.delete("/api/strings", (req, res) => {
+  try {
+    const { text, all } = req.body || {};
+    if (all === true) {
+      clearStorage();
+      return res.json({ message: "All cleared", storage: getStorage() });
+    }
+    if (typeof text !== "string") {
+      return res.status(400).json({
+        error: "Provide { text } to remove or { all: true } to clear all",
+      });
+    }
+    const removedCount = removeByValue(text);
+    res.json({
+      message: "Removed by value",
+      removedCount,
+      storage: getStorage(),
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 
