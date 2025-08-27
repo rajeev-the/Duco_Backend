@@ -67,6 +67,15 @@ app.get("/api/ip", async (req, res) => {
   const data = await response.json();
   res.json(data);
 });
+app.post('/api/admin/check', (req, res) => {
+  const { userid, password } = req.body || {};
+  if (!userid || !password) {
+    return res.status(400).json({ ok: false, message: 'userid and password are required' });
+  }
+
+  const ok = userid === process.env.ADMIN_USER ||"admin" && password === process.env.ADMIN_PASS ||"12345";
+  return res.status(ok ? 200 : 401);
+});
 app.use("/api",BannerRoutes)
 
 
