@@ -63,6 +63,7 @@ app.use("/api",completedorderRoutes)
 app.use("/api",orderRoutes)
 app.use("/api",analytics)
 app.use("/api",require("./Router/LogisticsRoutes"))
+app.use("/api",require("./Router/chargePlanRoutes"))
 
 
 app.get("/api/ip", async (req, res) => {
