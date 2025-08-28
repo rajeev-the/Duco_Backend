@@ -62,11 +62,19 @@ app.use("/api/payment",paymentRoute)
 app.use("/api",completedorderRoutes)
 app.use("/api",orderRoutes)
 app.use("/api",analytics)
+app.use("/api",require("./Router/LogisticsRoutes"))
+
+
 app.get("/api/ip", async (req, res) => {
   const response = await fetch("http://ip-api.com/json");
   const data = await response.json();
   res.json(data);
 });
+
+
+
+
+
 app.post('/api/admin/check', (req, res) => {
   const { userid, password } = req.body || {};
   if (!userid || !password) {
