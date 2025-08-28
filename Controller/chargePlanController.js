@@ -1,5 +1,5 @@
 // controllers/chargePlanController.js
-const ChargePlan = require("../models/DefaultChargePlan");
+const ChargePlan = require("../DataBase/Models/DefaultChargePlan");
 
 // ---------- helpers ----------
 const toNum = (v, name) => {
