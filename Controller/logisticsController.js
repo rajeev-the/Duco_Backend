@@ -1,6 +1,6 @@
 // controllers/logisticsController.js
 const mongoose = require("mongoose");
-const Logistic = require("../models/Logistic"); // <- adjust path if different
+const Logistic = require("../DataBase/Models/LogisticModel"); // <- adjust path if different
 
 // Small helper to validate ObjectId
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
