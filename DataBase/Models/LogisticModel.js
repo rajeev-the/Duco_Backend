@@ -40,3 +40,6 @@ const LogisticSchema = new mongoose.Schema({
         default: Date.now
     }
 });
+const Logistic = mongoose.model("Logistic", LogisticSchema);
+
+module.exports = Logistic; // <-- default export is the MODEL

@@ -9,7 +9,7 @@ const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
  * Create Logistic
  * Body: { orderId, trackingNumber?, carrier?, estimatedDelivery?, shippingAddress, img?, note? }
  */
-exports.createLogistic = async (req, res) => {
+ const createLogistic = async (req, res) => {
   try {
     const {
       orderId,
@@ -63,8 +63,8 @@ exports.createLogistic = async (req, res) => {
  * Update Logistic by _id
  * Params: :id
  * Body: any of { trackingNumber, carrier, estimatedDelivery, shippingAddress, img, note }
- */
-exports.updateLogistic = async (req, res) => {
+ */  
+ const  updateLogistic = async (req, res) => {
   try {
     const { id } = req.params;
     if (!isValidObjectId(id)) {
@@ -106,7 +106,7 @@ exports.updateLogistic = async (req, res) => {
  * Params: :orderId
  * Query: ?populate=true (optional)
  */
-exports.getLogisticsByOrder = async (req, res) => {
+const  getLogisticsByOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { populate } = req.query;
@@ -132,7 +132,7 @@ exports.getLogisticsByOrder = async (req, res) => {
 /**
  * (Optional) Get single logistic by _id
  */
-exports.getLogisticById = async (req, res) => {
+const getLogisticById = async (req, res) => {
   try {
     const { id } = req.params;
     if (!isValidObjectId(id)) {
@@ -149,3 +149,10 @@ exports.getLogisticById = async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 };
+
+module.exports = {
+  createLogistic,
+  updateLogistic,
+    getLogisticsByOrder,
+    getLogisticById,
+}
