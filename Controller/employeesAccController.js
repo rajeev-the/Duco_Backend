@@ -66,21 +66,21 @@ exports.updateEmployeeAcc = async (req, res) => {
   }
 };
 
-/** Auth check: url + employeeid + password => { ok: true/false } */
+/** Auth check:   employeeid + password => { ok: true/false } */
 exports.checkEmployeeLogin = async (req, res) => {
   try {
-    const { url, employeeid, password } = req.body;
-    if (!url || !employeeid || !password) {
+    const { employeeid, password } = req.body;
+    if ( !employeeid || !password) {
       return res.status(400).json({ ok: false, error: "Missing credentials" });
     }
 
     // fetch one with these creds
-    const user = await EmployeesAcc.findOne({ url, employeeid });
+    const user = await EmployeesAcc.findOne({ employeeid });
     if (!user) return res.json({ ok: false });
 
     // plain-text compare (add bcrypt later if you wish)
     const ok = user.password === password;
-    res.json({ ok });
+    res.json({ ok , url:user.url});
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });
   }
