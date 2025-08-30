@@ -1,4 +1,4 @@
-const EmployeesAcc = require("../DataBase/Models/BankDetails");
+const EmployeesAcc = require("../DataBase/Models/EmployessAcc");
 
 /** Create */
 exports.createEmployeeAcc = async (req, res) => {
