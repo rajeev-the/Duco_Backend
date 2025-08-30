@@ -65,6 +65,7 @@ app.use("/api",analytics)
 app.use("/api",require("./Router/LogisticsRoutes"))
 app.use("/api",require("./Router/chargePlanRoutes"))
 app.use("/api",require("./Router/bankDetails"))
+app.use("/api",require("./Router/employeesRoutes"))
 
 
 app.get("/api/ip", async (req, res) => {
