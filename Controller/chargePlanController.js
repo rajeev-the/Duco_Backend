@@ -118,7 +118,7 @@ exports.getRatesForQty = async (req, res) => {
       data: {
         qty,
         perUnit,
-        perUnitTotal: packaging + printing + gst
+      
       }
     });
   } catch (e) {
@@ -138,7 +138,7 @@ exports.getTotalsForQty = async (req, res) => {
     const printing  = findCostForQty(plan.printingcost, qty, "printingcost");
     const gst       = findCostForQty(plan.gst, qty, "gst");
 
-    const perUnitTotal = packaging + printing + gst;
+    
     res.json({
       success: true,
       data: {
@@ -148,7 +148,7 @@ exports.getTotalsForQty = async (req, res) => {
           pakageingandforwarding: packaging * qty,
           printingcost: printing * qty,
           gst: gst * qty,
-          grandTotal: perUnitTotal * qty
+         
         }
       }
     });
