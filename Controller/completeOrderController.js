@@ -23,6 +23,10 @@ const completeOrder = async (req, res) => {
         razorpayPaymentId: paymentId || null,
         status: "Pending",
         paymentmode: "Bank Transfer",
+        pf:orderData.pf,
+        gst:printing.gst,
+        printing:printing.gst
+
       });
 
       return res.status(200).json({ success: true, order });
@@ -43,6 +47,9 @@ const completeOrder = async (req, res) => {
       razorpayPaymentId: paymentId,
       status: "Pending",
       paymentmode: "Razorpay",
+         pf:orderData.pf,
+        gst:printing.gst,
+        printing:printing.printing
     });
 
     return res.status(200).json({ success: true, order });

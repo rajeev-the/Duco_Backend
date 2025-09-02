@@ -23,6 +23,7 @@ const paymentRoute = require("./Router/paymentRoutes.js")
 const completedorderRoutes = require("./Router/CompletedOrderRoutes.js")
 const orderRoutes = require("./Router/orderRoutes.js")
 const analytics = require("./Router/analytics")
+const dataRoutes = require("./Router/DataRoutes.js")
 
 const BannerRoutes = require("./Router/BannerRoutes.js")
 require('dotenv').config();
@@ -88,6 +89,7 @@ app.post('/api/admin/check', (req, res) => {
   return res.status(ok ? 200 : 401);
 });
 app.use("/api",BannerRoutes)
+app.use("/data", dataRoutes);
 
 
 

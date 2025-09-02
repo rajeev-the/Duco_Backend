@@ -70,7 +70,21 @@ const OrderSchema = new Schema({
   qlinkOrderId: {
     type: String,
     default: null
+  },
+  pf:{
+    type:Number,
+    default:0,
+  },
+    gst:{
+    type:Number,
+    default:0,
+  },
+    printing:{
+    type:Number,
+    default:0,
   }
+
+
 
 }, { timestamps: true });
 

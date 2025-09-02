@@ -21,6 +21,8 @@ const BankDetails = new mongoose.Schema({
             type:String,
             require:true
         },
+       
+
       
     },
     upidetails:{
