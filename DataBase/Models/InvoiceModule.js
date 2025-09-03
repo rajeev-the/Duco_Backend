@@ -58,7 +58,6 @@ const InvoiceSchema = new Schema({
   company: { type: CompanySchema, required: true },
   invoice: { type: InvoiceInfoSchema, required: true },
   billTo: { type: PartySchema, required: true },
-  shipTo: { type: PartySchema, required: true },
   items: { type: [ItemSchema], required: true },
   charges: { type: ChargesSchema, default: {} },
   tax: { type: TaxSchema, default: {} },
