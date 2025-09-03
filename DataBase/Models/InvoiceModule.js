@@ -67,4 +67,7 @@ const InvoiceSchema = new Schema({
   }
 }, { timestamps: true });
 
+InvoiceSchema.index({ order: 1 }, { unique: true, sparse: true });
+
+
 module.exports = mongoose.model("Invoice", InvoiceSchema);

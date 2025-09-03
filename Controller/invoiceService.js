@@ -60,11 +60,18 @@ async function createInvoice(data) {
   return { invoice, totals };
 }
 
-// Get by ID (populate order if present)
-async function getInvoiceById(id) {
-  if (!mongoose.isValidObjectId(id)) throw new Error("Invalid invoice id");
-  const invoice = await Invoice.findById(id).populate("order");
-  if (!invoice) throw new Error("Invoice not found");
+async function getInvoiceByOrderId(orderId) {
+  if (!mongoose.isValidObjectId(orderId)) {
+    throw new Error("Invalid order id");
+  }
+
+  // If there could be multiple invoices per order, prefer the latest one.
+  const invoice = await Invoice
+    .findOne({ order: orderId })
+    .sort({ createdAt: -1 })
+    .populate("order");
+
+  if (!invoice) throw new Error("Invoice not found for this order");
 
   const totals = computeTotals(invoice.toObject());
   return { invoice, totals };
@@ -214,6 +221,6 @@ async function getInvoiceByNumber(number) {
 }
 
 module.exports.createInvoice = createInvoice;
-module.exports.getInvoiceById = getInvoiceById;
+module.exports.getInvoiceByOrderId = getInvoiceByOrderId;
 module.exports.getInvoices = getInvoices;
 module.exports.getInvoiceByNumber = getInvoiceByNumber;

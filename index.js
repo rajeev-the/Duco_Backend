@@ -24,7 +24,7 @@ const completedorderRoutes = require("./Router/CompletedOrderRoutes.js")
 const orderRoutes = require("./Router/orderRoutes.js")
 const analytics = require("./Router/analytics")
 const {router} = require("./Router/DataRoutes.js")
-
+const InvoiceRoutes = require("./Router/InvoiceRoutes.js")
 const BannerRoutes = require("./Router/BannerRoutes.js")
 require('dotenv').config();
 
@@ -90,6 +90,7 @@ app.post('/api/admin/check', (req, res) => {
 });
 app.use("/api",BannerRoutes)
 app.use("/data", router);
+app.use("/api",InvoiceRoutes)
 
 
 
