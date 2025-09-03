@@ -61,9 +61,6 @@ async function createInvoice(data) {
 }
 
 async function getInvoiceByOrderId(orderId) {
-  if (!mongoose.isValidObjectId(orderId)) {
-    throw new Error("Invalid order id");
-  }
 
   // If there could be multiple invoices per order, prefer the latest one.
   const invoice = await Invoice
