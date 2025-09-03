@@ -60,15 +60,7 @@ async function createInvoice(data) {
   return { invoice, totals };
 }
 
-// async function getInvoiceByOrderId(orderId) {
-//   // findOne will return a single document, not an array
-//   const invoice = await Invoice.findOne({ orderId }).sort({ createdAt: -1 });
 
-//   if (!invoice) throw new Error("Invoice not found for this order");
-
-//   const totals = computeTotals(invoice.toObject());
-//   return { invoice, totals };
-// }
 async function getInvoiceByOrderId(orderId) {
   // Try to coerce to ObjectId if valid
   const asObjectId = mongoose.isValidObjectId(orderId)
