@@ -61,16 +61,15 @@ async function createInvoice(data) {
 }
 
 async function getInvoiceByOrderId(orderId) {
-
-   
-  const invoice = await Invoice.find({ orderId }).sort({ createdAt: -1 });
- 
+  // findOne will return a single document, not an array
+  const invoice = await Invoice.findOne({ orderId }).sort({ createdAt: -1 });
 
   if (!invoice) throw new Error("Invoice not found for this order");
 
   const totals = computeTotals(invoice.toObject());
   return { invoice, totals };
 }
+
 
 // Get list with filters
 // Supports: number (exact/partial), gstin (billTo), forCompany, name (billTo.name partial),
