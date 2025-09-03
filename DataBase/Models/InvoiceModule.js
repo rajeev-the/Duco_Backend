@@ -27,8 +27,7 @@ const PartySchema = new Schema({
   name: { type: String, required: true },
   address: { type: String },
   gstin: { type: String },
-  pan: { type: String },
-  iec: { type: String },
+
 }, { _id: false });
 
 // Item Schema
@@ -63,6 +62,9 @@ const InvoiceSchema = new Schema({
   tax: { type: TaxSchema, default: {} },
   terms: [{ type: String }],
   forCompany: { type: String, required: true },
+  order:{
+     type:mongoose.Schema.Types.ObjectId,ref:"Order"
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Invoice", InvoiceSchema);
