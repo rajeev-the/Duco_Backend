@@ -60,14 +60,44 @@ async function createInvoice(data) {
   return { invoice, totals };
 }
 
+// async function getInvoiceByOrderId(orderId) {
+//   // findOne will return a single document, not an array
+//   const invoice = await Invoice.findOne({ orderId }).sort({ createdAt: -1 });
+
+//   if (!invoice) throw new Error("Invoice not found for this order");
+
+//   const totals = computeTotals(invoice.toObject());
+//   return { invoice, totals };
+// }
 async function getInvoiceByOrderId(orderId) {
-  // findOne will return a single document, not an array
-  const invoice = await Invoice.findOne({ orderId }).sort({ createdAt: -1 });
+  // Try to coerce to ObjectId if valid
+  const asObjectId = mongoose.isValidObjectId(orderId)
+    ? new mongoose.Types.ObjectId(orderId)
+    : null;
 
-  if (!invoice) throw new Error("Invoice not found for this order");
+  // Try both patterns:
+  //  1) { order: ObjectId }       -> typical Mongoose ref to Order
+  //  2) { orderId: <string|id> }  -> some apps store the order id as a string
+  const query = {
+    $or: [
+      ...(asObjectId ? [{ order: asObjectId }] : []),
+      { orderId: orderId }, // keep as string for exact match
+    ],
+  };
 
-  const totals = computeTotals(invoice.toObject());
-  return { invoice, totals };
+  // Get the latest invoice for that order
+  const invoiceDoc = await Invoice.findOne(query).sort({ createdAt: -1 });
+
+  if (!invoiceDoc) {
+    throw new Error("Invoice not found for this order");
+  }
+
+  // If computeTotals expects a POJO, use .toObject(); if it’s already OK with a doc, you can pass invoiceDoc directly
+  const invoiceObj = invoiceDoc.toObject ? invoiceDoc.toObject() : invoiceDoc;
+  
+
+
+  return { invoice: invoiceObj };
 }
 
 
