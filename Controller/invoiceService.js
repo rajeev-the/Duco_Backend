@@ -62,11 +62,9 @@ async function createInvoice(data) {
 
 async function getInvoiceByOrderId(orderId) {
 
-  // If there could be multiple invoices per order, prefer the latest one.
-  const invoice = await Invoice
-    .findOne({ order: orderId })
-    .sort({ createdAt: -1 })
-    .populate("order");
+   
+  const invoice = await Invoice.find({ orderId }).sort({ createdAt: -1 });
+ 
 
   if (!invoice) throw new Error("Invoice not found for this order");
 
