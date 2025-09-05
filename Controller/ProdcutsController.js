@@ -1,4 +1,5 @@
 const Product = require('../DataBase/Models/ProductsModel')
+const mongoose = require('mongoose'); 
 
 
 const CreateProdcuts = async (req, res) => {
@@ -76,17 +77,17 @@ const deleteProduct = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-   
-
     return res.status(200).json({
       message: 'Product deleted successfully',
       product: deleted,
     });
+
   } catch (error) {
     console.error('Error deleting product:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 };
+
 
 
 const GetProductsSubcategory = async (req, res) => {
