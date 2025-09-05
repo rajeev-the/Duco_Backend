@@ -29,7 +29,7 @@ const getWallet = async (req, res) => {
 async function createTransaction(userId, orderId, amount, type) {
   const balance = amount / 2;
 
-  if (type !== "50%") {
+  if (type !== "100%") {
     throw new Error("Invalid transaction type");
   }
 
