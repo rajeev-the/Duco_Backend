@@ -235,7 +235,7 @@ const completeOrder = async (req, res) => {
 
       return res.status(200).json({ success: true, order });
     }
-      if (paymentmode === "halfpay") {
+      if (paymentmode === "50%") {
         
 
       payment = await verifyRazorpayPayment(paymentId, totalPay/2);
