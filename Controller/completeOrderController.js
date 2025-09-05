@@ -3,6 +3,7 @@ const Razorpay = require("razorpay");
 const Order = require("../DataBase/Models/OrderModel");
 const { createInvoice } = require("./invoiceService");
 const { getOrCreateSingleton } = require("../Router/DataRoutes");
+const {createTransaction} = require("./walletController")
 
 // --- Razorpay client ---
 const razorpay = new Razorpay({
@@ -187,6 +188,84 @@ const completeOrder = async (req, res) => {
       });
 
       // Prepare invoice data from singleton & order
+      const settings = await getOrCreateSingleton();
+      const invoicePayload = {
+        company: {
+          name: settings?.company?.name,
+          address: settings?.company?.address,
+          gstin: settings?.company?.gstin,
+          cin: settings?.company?.cin,
+          email: settings?.company?.email,
+          pan: settings?.company?.pan,
+          iec: settings?.company?.iec,
+          gst: settings?.company?.gst,
+        },
+        invoice: {
+          number: String(order._id),
+          date: formatDateDDMMYYYY(),
+          placeOfSupply: settings?.invoice?.placeOfSupply,
+          reverseCharge: !!settings?.invoice?.reverseCharge,
+          copyType: settings?.invoice?.copyType || "Original Copy",
+        },
+        billTo: {
+          name: user.name || "",
+          address: addressToLine(address),
+          gstin: "", // fill if available
+        },
+        items: buildInvoiceItems(items),
+        charges: {
+          pf: safeNum(orderData.pf, 0),
+          printing: safeNum(orderData.printing, 0),
+        },
+        tax: {
+          cgstRate: safeNum(orderData.gst, 0) / 2,
+          sgstRate: safeNum(orderData.gst, 0) / 2,
+        },
+        terms: settings?.terms,
+        forCompany: settings?.forCompany,
+        order: order._id,
+      };
+
+      try {
+        await createInvoice(invoicePayload);
+      } catch (e) {
+        console.error("Invoice creation failed (razorpay):", e);
+        // continue; order is valid
+      }
+
+      return res.status(200).json({ success: true, order });
+    }
+      if (paymentmode === "halfpay") {
+        
+
+      payment = await verifyRazorpayPayment(paymentId, totalPay/2);
+
+      order = await Order.create({
+        products: items,
+        price: totalPay,
+        address,
+        user: user._id,
+        razorpayPaymentId: payment.id,
+        status: "Pending",
+        paymentmode: "Razorpay",
+        pf: safeNum(orderData.pf, 0),
+        gst: safeNum(orderData.gst, 0),
+        printing: safeNum(orderData.printing, 0),
+      });
+
+
+      try {
+         await createTransaction({
+          userId:user._id ,
+          orderId:order._id
+          , amount:totalPay/2
+          , type:"50%"
+         })
+        
+      } catch (error) {
+         console.error("Invoice creation failed (halfpay):", e);
+      }
+     
       const settings = await getOrCreateSingleton();
       const invoicePayload = {
         company: {

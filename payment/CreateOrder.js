@@ -7,20 +7,27 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-
 const createRazorpayOrder = async (req, res) => {
-  const { amount } = req.body;
-
   try {
+    let { amount, half = false } = req.body; // default half = false
+
+    if (!amount || isNaN(amount)) {
+      return res.status(400).json({ error: "Amount is required and must be a number" });
+    }
+
+    // Calculate final amount
+    const finalAmount = half ? amount / 2 : amount;
+
     const order = await razorpay.orders.create({
-      amount: amount * 100,
+      amount: Math.round(finalAmount * 100), // INR → paise
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
       payment_capture: 1,
     });
 
-    res.json({ orderId: order.id, amount: order.amount });
+    res.json({ orderId: order.id, amount: order.amount, half });
   } catch (err) {
+    console.error("Razorpay order creation failed:", err);
     res.status(500).json({ error: "Razorpay order creation failed" });
   }
 };

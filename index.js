@@ -26,6 +26,9 @@ const analytics = require("./Router/analytics")
 const {router} = require("./Router/DataRoutes.js")
 const InvoiceRoutes = require("./Router/InvoiceRoutes.js")
 const BannerRoutes = require("./Router/BannerRoutes.js")
+const wallet = require("./Router/walletRoutes.js")
+
+
 require('dotenv').config();
 
 
@@ -91,6 +94,7 @@ app.post('/api/admin/check', (req, res) => {
 app.use("/api",BannerRoutes)
 app.use("/data", router);
 app.use("/api",InvoiceRoutes)
+app.use("/api",wallet)
 
 
 
