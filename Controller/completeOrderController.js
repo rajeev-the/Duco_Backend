@@ -70,23 +70,32 @@ function addressToLine(a = {}) {
 
 async function verifyRazorpayPayment(paymentId, expectedAmountINR) {
   if (!paymentId) throw new Error("Missing paymentId");
-  const payment = await razorpay.payments.fetch(paymentId);
 
+  const payment = await razorpay.payments.fetch(paymentId);
   if (!payment) throw new Error("Payment not found");
-  if (payment.status !== "captured") {
-    throw new Error(`Payment not captured (status: ${payment.status})`);
+
+  // If you sometimes auto-capture, sometimes capture later:
+  const paidPaise = Number(payment.amount_captured ?? payment.amount);
+  const statusOk = ["captured", "authorized"].includes(payment.status);
+  if (!statusOk) {
+    throw new Error(`Payment not final (status: ${payment.status})`);
   }
 
-  // Basic amount check (paise vs INR)
-  const expectedPaise = Math.round(safeNum(expectedAmountINR, 0) * 100);
-  if (safeNum(payment.amount, -1) !== expectedPaise) {
+  const expectedRupees = Number(expectedAmountINR);
+  const expectedPaise = Math.round(expectedRupees * 100);
+
+  // One-time debug (remove later):
+  console.log({ paidPaise, expectedPaise, expectedRupees, paymentAmount: payment.amount, amountCaptured: payment.amount_captured });
+
+  if (paidPaise !== expectedPaise) {
     throw new Error(
-      `Payment amount mismatch. Expected ₹${expectedAmountINR}, got ₹${safeNum(payment.amount, 0) / 100}`
+      `Payment amount mismatch. Expected ₹${(expectedPaise/100).toFixed(2)} (${expectedPaise}p), got ₹${(paidPaise/100).toFixed(2)} (${paidPaise}p)`
     );
   }
 
-  return payment;
+  return payment; // OK
 }
+
 
 // --- Controller ---
 const completeOrder = async (req, res) => {
