@@ -11,6 +11,7 @@ router.get("/get",GetProducts)
 router.get("/get/:prodcutsid",GetProductssingle)
 router.get("/getsub/:idsub",GetProductsSubcategory)
 router.put("/update/:productId",updateProduct)
+router.delete("/deleted/:productId",updateProduct)
 
 
 

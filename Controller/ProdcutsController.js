@@ -59,6 +59,36 @@ const GetProductssingle = async (req, res) => {
   }
 };
 
+
+const deleteProduct = async (req, res) => {
+ 
+  const productId = req.params.productId || req.params.prodcutsid;
+
+  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+    return res.status(400).json({ message: 'Invalid product id' });
+  }
+
+  try {
+   
+
+    const deleted = await Product.findByIdAndDelete(productId);
+    if (!deleted) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+   
+
+    return res.status(200).json({
+      message: 'Product deleted successfully',
+      product: deleted,
+    });
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+
 const GetProductsSubcategory = async (req, res) => {
 
       const {idsub} = req.params
@@ -122,5 +152,6 @@ module.exports = {
     GetProducts,
     GetProductssingle,
     GetProductsSubcategory,
-    updateProduct
+    updateProduct,
+    deleteProduct
 }
