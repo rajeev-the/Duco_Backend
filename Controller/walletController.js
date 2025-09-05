@@ -29,8 +29,9 @@ const getWallet = async (req, res) => {
 async function createTransaction(userId, orderId, amount, type) {
   const balance = amount / 2;
 
-  if (type !== "100%") {
-    throw new Error("Invalid transaction type");
+  const allowedTypes = new Set(["50%", "100%", "MISC"]);
+  if (!allowedTypes.has(String(type))) {
+    throw new Error(`Invalid transaction type: ${type}`);
   }
 
   let wallet = await Wallet.findOne({ user: userId });
