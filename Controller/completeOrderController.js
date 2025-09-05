@@ -263,7 +263,7 @@ const completeOrder = async (req, res) => {
          })
         
       } catch (error) {
-         console.error("Invoice creation failed (halfpay):", e);
+         console.error("Wallet  creation failed (halfpay):", error);
       }
      
       const settings = await getOrCreateSingleton();
