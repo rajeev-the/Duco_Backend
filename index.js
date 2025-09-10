@@ -91,6 +91,8 @@ app.post('/api/admin/check', (req, res) => {
   const ok = userid === process.env.ADMIN_USER ||"admin" && password === process.env.ADMIN_PASS ||"12345";
   return res.status(ok ? 200 : 401);
 });
+
+
 app.use("/api",BannerRoutes)
 app.use("/data", router);
 app.use("/api",InvoiceRoutes)
