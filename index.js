@@ -77,8 +77,11 @@ app.get("/api/ip", async (req, res) => {
   const data = await response.json();
   res.json(data);
 });
-
-app.post('/api/admin/check', (req, res) => {
+app.use("/api",BannerRoutes)
+app.use("/data", router);
+app.use("/api",InvoiceRoutes)
+app.use("/api",wallet)
+app.post("/api/admin/check", (req, res) => {
   const { userid, password } = req.body || {};
 
   if (!userid || !password) {
@@ -96,10 +99,6 @@ app.post('/api/admin/check', (req, res) => {
   }
 });
 
-app.use("/api",BannerRoutes)
-app.use("/data", router);
-app.use("/api",InvoiceRoutes)
-app.use("/api",wallet)
 
 
 
