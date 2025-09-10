@@ -78,20 +78,23 @@ app.get("/api/ip", async (req, res) => {
   res.json(data);
 });
 
-
-
-
-
 app.post('/api/admin/check', (req, res) => {
   const { userid, password } = req.body || {};
+
   if (!userid || !password) {
     return res.status(400).json({ ok: false, message: 'userid and password are required' });
   }
 
-  const ok = userid === process.env.ADMIN_USER ||"admin" && password === process.env.ADMIN_PASS ||"12345";
-  return res.status(ok ? 200 : 401);
-});
+  const ok = 
+    (userid === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) ||
+    (userid === "admin" && password === "12345");
 
+  if (ok) {
+    return res.status(200).json({ ok: true, message: "Admin authenticated" });
+  } else {
+    return res.status(401).json({ ok: false, message: "Invalid credentials" });
+  }
+});
 
 app.use("/api",BannerRoutes)
 app.use("/data", router);
