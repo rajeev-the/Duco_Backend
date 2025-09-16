@@ -1,6 +1,7 @@
 const CategoryModel = require("../DataBase/Models/Category")
 
 const SubCategoryModel = require("../DataBase/Models/subCategory")
+const Product = require("../DataBase/Models/ProductsModel")
 
 const CreateCatogry =async(req, res)=>{
  
@@ -118,6 +119,31 @@ const getSubcategoriesByCategoryId = async (req, res) => {
   }
 };
 
+const getProductsByCategory = async (req, res) => {
+  try {
+    const categoryId = req.params.id;
+
+    // 1. Find all subcategories for this category
+    const subcategories = await SubCategoryModel.find({ categoryId: categoryId }).select("_id");
+
+    // Extract subcategory IDs
+    const subcategoryIds = subcategories.map((sub) => sub._id);
+
+    // 2. Find all products in those subcategories
+    const products = await Product.find({ subcategory: { $in: subcategoryIds } })
+      .populate({
+        path: "subcategory",
+        populate: { path: "categoryId" } // optional
+      });
+
+    res.json(products);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+
 
 
 module.exports = {
@@ -125,5 +151,6 @@ module.exports = {
         SubCreateCatogry,
         getallCatgory,
         getallsubcategory,
-        getSubcategoriesByCategoryId
+        getSubcategoriesByCategoryId,
+        getProductsByCategory
 }
