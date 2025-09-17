@@ -4,6 +4,7 @@ const {
   createBankDetails,
   getBankDetails,
   updateBankDetails,
+  deleteBankDetails,
 } = require("../Controller/bankDetailsController");
 
 // Create new details
@@ -14,5 +15,8 @@ router.get("/bankdetails", getBankDetails);
 
 // Update details by ID
 router.patch("/bankdetails/:id", updateBankDetails);
+
+//Delete details by id
+router.delete("/bankdetails/:id", deleteBankDetails);
 
 module.exports = router;
