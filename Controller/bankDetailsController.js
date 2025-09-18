@@ -32,10 +32,26 @@ exports.updateBankDetails = async (req, res) => {
     );
 
     if (!updatedDetails) {
-      return res.status(404).json({ success: false, message: "Details not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Details not found" });
     }
 
     res.status(200).json({ success: true, data: updatedDetails });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+exports.deleteBankDetails = async (req, res) => {
+  try {
+    const deleteDetails = await BankDetails.findByIdAndDelete(req.params.id);
+    if (!deleteDetails) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Details not found" });
+    }
+    res.status(200).json({ success: true, message: "Deleted successfully" });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
