@@ -119,6 +119,8 @@ const getSubcategoriesByCategoryId = async (req, res) => {
   }
 };
 
+
+
 const getProductsByCategory = async (req, res) => {
   try {
     const categoryId = req.params.id;
@@ -126,22 +128,25 @@ const getProductsByCategory = async (req, res) => {
     // 1. Find all subcategories for this category
     const subcategories = await SubCategoryModel.find({ categoryId: categoryId }).select("_id");
 
+    if (!subcategories.length) {
+      return res.status(404).json({ message: "No subcategories found for this category" });
+    }
+
     // Extract subcategory IDs
     const subcategoryIds = subcategories.map((sub) => sub._id);
 
     // 2. Find all products in those subcategories
-    const products = await Product.find({ subcategory: { $in: subcategoryIds } })
-      .populate({
-        path: "subcategory",
-        populate: { path: "categoryId" } // optional
-      });
+    const products = await Product.find({
+      subcategory: { $in: subcategoryIds }
+    }).populate("subcategory"); // field in Product schema is "subcategory"
 
-    res.json(products);
+    res.json({ products });
   } catch (err) {
-    console.error(err);
+    console.error("Error in getProductsByCategory:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
+
 
 
 

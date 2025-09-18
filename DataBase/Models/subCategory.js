@@ -16,4 +16,6 @@ const  subCatogry = new  mongoose.Schema({
 
 })
 
-module.exports = mongoose.model("Subcatogry",subCatogry)
+// module.exports = mongoose.model("Subcatogry",subCatogry)
+
+module.exports = mongoose.model("Subcategory", subCatogry, "subcatogries");
