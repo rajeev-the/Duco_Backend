@@ -7,16 +7,17 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+// Create Razorpay order with partial payment support
 const createRazorpayOrder = async (req, res) => {
   try {
-    let { amount, half = false } = req.body; // default half = false
+    let { amount, half = false } = req.body;
 
     if (!amount || isNaN(amount)) {
       return res.status(400).json({ error: "Amount is required and must be a number" });
     }
 
-    // Calculate final amount
-    const finalAmount = half ? amount / 2 : amount;
+    // Calculate final amount to charge
+    const finalAmount = half ? Math.ceil(amount / 2) : amount;
 
     const order = await razorpay.orders.create({
       amount: Math.round(finalAmount * 100), // INR → paise
@@ -32,6 +33,7 @@ const createRazorpayOrder = async (req, res) => {
   }
 };
 
+// Verify Razorpay payment signature
 const verifyPayment = async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
@@ -46,10 +48,16 @@ const verifyPayment = async (req, res) => {
     return res.status(400).json({ success: false, message: "Signature mismatch" });
   }
 
+  // TODO: Update order in DB here: update amountPaid, amountDue, paymentStatus etc.
+  // Example:
+  // const orderIdInDb = ...;
+  // const paymentAmount = ...; // from Razorpay order or from your own logic
+  // Update order document with payment progress
+
   res.json({ success: true, razorpay_payment_id });
 };
 
-// ✅ Export both functions
+
 module.exports = {
   createRazorpayOrder,
   verifyPayment,

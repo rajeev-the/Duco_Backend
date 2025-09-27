@@ -110,7 +110,7 @@ const completeOrder = async (req, res) => {
     const items = Array.isArray(orderData.items) ? orderData.items : [];
     const totalPay = safeNum(orderData.totalPay, 0);
     const address = orderData.address;
-    const user = orderData.user; // expected { _id, name, ... }
+    const user = orderData.user;
 
     // --- Case 1: Bank Transfer / Manual (no Razorpay call) ---
     if (paymentmode === "netbanking") {
@@ -127,17 +127,16 @@ const completeOrder = async (req, res) => {
         printing: safeNum(orderData.printing, 0),
       });
 
+      // 🔥 Sync with Qikink
       try {
         const qikinkRes = await createQikinkOrder(order, items);
-        order.qikinkOrderId = qikinkRes.order_id;
+        order.qikinkOrderId = qikinkRes?.order_id || qikinkRes?.id;
         await order.save();
       } catch (err) {
-        console.error(
-          "❌ Qikink order creation failed:",
-          err.response?.data || err.message
-        );
+        console.error("Qikink sync failed (netbanking):", err.message);
       }
-      // Build and persist invoice (optional for bank transfer—kept for parity)
+
+      // Build and persist invoice
       const settings = await getOrCreateSingleton();
       const invoicePayload = {
         company: {
@@ -151,7 +150,7 @@ const completeOrder = async (req, res) => {
           gst: settings?.company?.gst,
         },
         invoice: {
-          number: String(order._id), // use order id as a unique number
+          number: String(order._id),
           date: formatDateDDMMYYYY(),
           placeOfSupply: settings?.invoice?.placeOfSupply,
           reverseCharge: !!settings?.invoice?.reverseCharge,
@@ -160,7 +159,7 @@ const completeOrder = async (req, res) => {
         billTo: {
           name: user.name || "",
           address: addressToLine(address),
-          gstin: "", // fill if you have it for B2B
+          gstin: "",
         },
         items: buildInvoiceItems(items),
         charges: {
@@ -179,7 +178,6 @@ const completeOrder = async (req, res) => {
       try {
         await createInvoice(invoicePayload);
       } catch (e) {
-        // Don’t block order creation if invoicing fails; just log
         console.error("Invoice creation failed (netbanking):", e);
       }
 
@@ -203,18 +201,16 @@ const completeOrder = async (req, res) => {
         printing: safeNum(orderData.printing, 0),
       });
 
+      // 🔥 Sync with Qikink
       try {
         const qikinkRes = await createQikinkOrder(order, items);
-        order.qikinkOrderId = qikinkRes.order_id;
+        order.qikinkOrderId = qikinkRes?.order_id || qikinkRes?.id;
         await order.save();
       } catch (err) {
-        console.error(
-          "❌ Qikink order creation failed:",
-          err.response?.data || err.message
-        );
+        console.error("Qikink sync failed (razorpay):", err.message);
       }
 
-      // Prepare invoice data from singleton & order
+      // Prepare invoice
       const settings = await getOrCreateSingleton();
       const invoicePayload = {
         company: {
@@ -237,7 +233,7 @@ const completeOrder = async (req, res) => {
         billTo: {
           name: user.name || "",
           address: addressToLine(address),
-          gstin: "", // fill if available
+          gstin: "",
         },
         items: buildInvoiceItems(items),
         charges: {
@@ -257,12 +253,12 @@ const completeOrder = async (req, res) => {
         await createInvoice(invoicePayload);
       } catch (e) {
         console.error("Invoice creation failed (razorpay):", e);
-        // continue; order is valid
       }
 
       return res.status(200).json({ success: true, order });
     }
-    //---Case 3: 50% via Razorpay---
+
+    // --- Case 3: 50% via Razorpay ---
     if (paymentmode === "50%") {
       payment = await verifyRazorpayPayment(paymentId, totalPay / 2);
 
@@ -279,21 +275,19 @@ const completeOrder = async (req, res) => {
         printing: safeNum(orderData.printing, 0),
       });
 
+      // 🔥 Sync with Qikink
       try {
         const qikinkRes = await createQikinkOrder(order, items);
-        order.qikinkOrderId = qikinkRes.order_id;
+        order.qikinkOrderId = qikinkRes?.order_id || qikinkRes?.id;
         await order.save();
       } catch (err) {
-        console.error(
-          "❌ Qikink order creation failed:",
-          err.response?.data || err.message
-        );
+        console.error("Qikink sync failed (50%):", err.message);
       }
 
       try {
         await createTransaction(user._id, order._id, totalPay, "50%");
       } catch (error) {
-        console.error("Wallet  creation failed (halfpay):", error);
+        console.error("Wallet creation failed (halfpay):", error);
       }
 
       const settings = await getOrCreateSingleton();
@@ -318,7 +312,7 @@ const completeOrder = async (req, res) => {
         billTo: {
           name: user.name || "",
           address: addressToLine(address),
-          gstin: "", // fill if available
+          gstin: "",
         },
         items: buildInvoiceItems(items),
         charges: {
@@ -337,8 +331,7 @@ const completeOrder = async (req, res) => {
       try {
         await createInvoice(invoicePayload);
       } catch (e) {
-        console.error("Invoice creation failed (razorpay):", e);
-        // continue; order is valid
+        console.error("Invoice creation failed (50%):", e);
       }
 
       return res.status(200).json({ success: true, order });
