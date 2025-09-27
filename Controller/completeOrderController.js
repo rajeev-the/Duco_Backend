@@ -3,7 +3,7 @@ const Razorpay = require("razorpay");
 const Order = require("../DataBase/Models/OrderModel");
 const { createInvoice } = require("./invoiceService");
 const { getOrCreateSingleton } = require("../Router/DataRoutes");
-const {createTransaction} = require("./walletController")
+const { createTransaction } = require("./walletController");
 
 // --- Razorpay client ---
 const razorpay = new Razorpay({
@@ -21,13 +21,6 @@ function sumQuantity(obj) {
   return Object.values(obj || {}).reduce((acc, q) => acc + safeNum(q, 0), 0);
 }
 
-/**
- * Build invoice items from cart products
- * Each product expected shape:
- * {
- *   _id, products_name, price, quantity: { S:1, M:2, ... }
- * }
- */
 function buildInvoiceItems(products, { hsn = "7307", unit = "Pcs." } = {}) {
   const items = [];
   (products || []).forEach((p) => {
@@ -63,7 +56,15 @@ function addressToLine(a = {}) {
     pincode = "",
     country = "",
   } = a || {};
-  return [fullName, houseNumber, street, landmark, city, state && `${state} - ${pincode}`, country]
+  return [
+    fullName,
+    houseNumber,
+    street,
+    landmark,
+    city,
+    state && `${state} - ${pincode}`,
+    country,
+  ]
     .filter(Boolean)
     .join(", ");
 }
@@ -81,7 +82,9 @@ async function verifyRazorpayPayment(paymentId, expectedAmountINR) {
   const expectedPaise = Math.round(safeNum(expectedAmountINR, 0) * 100);
   if (safeNum(payment.amount, -1) !== expectedPaise) {
     throw new Error(
-      `Payment amount mismatch. Expected ₹${expectedAmountINR}, got ₹${safeNum(payment.amount, 0) / 100}`
+      `Payment amount mismatch. Expected ₹${expectedAmountINR}, got ₹${
+        safeNum(payment.amount, 0) / 100
+      }`
     );
   }
 
@@ -94,7 +97,9 @@ const completeOrder = async (req, res) => {
 
   // Quick validations
   if (!orderData || !orderData.items || !orderData.user || !orderData.address) {
-    return res.status(400).json({ success: false, message: "Invalid order data" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid order data" });
   }
 
   let order = null;
@@ -104,7 +109,7 @@ const completeOrder = async (req, res) => {
     const items = Array.isArray(orderData.items) ? orderData.items : [];
     const totalPay = safeNum(orderData.totalPay, 0);
     const address = orderData.address;
-    const user = orderData.user; // expected { _id, name, ... }
+    const user = orderData.user;
 
     // --- Case 1: Bank Transfer / Manual (no Razorpay call) ---
     if (paymentmode === "netbanking") {
@@ -120,6 +125,15 @@ const completeOrder = async (req, res) => {
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
       });
+
+      // 🔥 Sync with Qikink
+      try {
+        const qikinkRes = await createQikinkOrder(order, items);
+        order.qikinkOrderId = qikinkRes?.order_id || qikinkRes?.id;
+        await order.save();
+      } catch (err) {
+        console.error("Qikink sync failed (netbanking):", err.message);
+      }
 
       // Build and persist invoice (optional for bank transfer—kept for parity)
       const settings = await getOrCreateSingleton();
@@ -187,6 +201,15 @@ const completeOrder = async (req, res) => {
         printing: safeNum(orderData.printing, 0),
       });
 
+      // 🔥 Sync with Qikink
+      try {
+        const qikinkRes = await createQikinkOrder(order, items);
+        order.qikinkOrderId = qikinkRes?.order_id || qikinkRes?.id;
+        await order.save();
+      } catch (err) {
+        console.error("Qikink sync failed (razorpay):", err.message);
+      }
+
       // Prepare invoice data from singleton & order
       const settings = await getOrCreateSingleton();
       const invoicePayload = {
@@ -235,10 +258,9 @@ const completeOrder = async (req, res) => {
 
       return res.status(200).json({ success: true, order });
     }
-      if (paymentmode === "50%") {
-        
-
-      payment = await verifyRazorpayPayment(paymentId, totalPay/2);
+    //---Case 3: 50% via Razorpay---
+    if (paymentmode === "50%") {
+      payment = await verifyRazorpayPayment(paymentId, totalPay / 2);
 
       order = await Order.create({
         products: items,
@@ -253,14 +275,21 @@ const completeOrder = async (req, res) => {
         printing: safeNum(orderData.printing, 0),
       });
 
+      // 🔥 Sync with Qikink
+      try {
+        const qikinkRes = await createQikinkOrder(order, items);
+        order.qikinkOrderId = qikinkRes?.order_id || qikinkRes?.id;
+        await order.save();
+      } catch (err) {
+        console.error("Qikink sync failed (50%):", err.message);
+      }
 
       try {
-         await createTransaction(user._id, order._id, totalPay, "50%");
-        
+        await createTransaction(user._id, order._id, totalPay, "50%");
       } catch (error) {
-         console.error("Wallet  creation failed (halfpay):", error);
+        console.error("Wallet  creation failed (halfpay):", error);
       }
-     
+
       const settings = await getOrCreateSingleton();
       const invoicePayload = {
         company: {
@@ -310,7 +339,9 @@ const completeOrder = async (req, res) => {
     }
 
     // Unknown payment mode
-    return res.status(400).json({ success: false, message: "Invalid payment mode" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid payment mode" });
   } catch (err) {
     // Best-effort rollback & refund
     try {
@@ -330,7 +361,9 @@ const completeOrder = async (req, res) => {
     }
 
     console.error("💥 completeOrder failed:", err);
-    return res.status(500).json({ success: false, message: err.message || "Internal error" });
+    return res
+      .status(500)
+      .json({ success: false, message: err.message || "Internal error" });
   }
 };
 

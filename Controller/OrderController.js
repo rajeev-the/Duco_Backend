@@ -1,6 +1,6 @@
 // controllers/orderController.js
 const mongoose = require("mongoose");
-const Order = require("../DataBase/Models/OrderModel"); // adjust path if needed
+const Order = require("../DataBase/Models/OrderModel");
 
 exports.getOrdersByUser = async (req, res) => {
   try {
@@ -21,8 +21,6 @@ exports.getOrdersByUser = async (req, res) => {
   }
 };
 
-
-
 // Get all orders sorted by newest first
 exports.getAllOrders = async (req, res) => {
   try {
@@ -33,7 +31,6 @@ exports.getAllOrders = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch orders" });
   }
 };
-
 
 // Get single order by ID
 exports.getOrderById = async (req, res) => {
@@ -54,34 +51,46 @@ exports.getOrderById = async (req, res) => {
   }
 };
 
-
-
 exports.updateOrderStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, qlinkOrderId } = req.body || {};
+  const { status, qikinkOrderId, paymentmode } = req.body || {};
 
   try {
     // ✅ Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: 'Invalid order ID' });
+      return res.status(400).json({ error: "Invalid order ID" });
     }
 
     // ✅ Build a safe patch
     const patch = {};
-    const validStatuses = ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
+    const validStatuses = [
+      "Pending",
+      "Processing",
+      "Shipped",
+      "Delivered",
+      "Cancelled",
+    ];
 
     // status (optional)
-    if (typeof status !== 'undefined') {
+    if (typeof status !== "undefined") {
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ error: "Invalid status value" });
       }
       patch.status = status;
     }
+    // qikinkOrderId (optional) — normalize "" -> null
+    if (Object.prototype.hasOwnProperty.call(req.body, "qikinkOrderId")) {
+      const normalized = (qikinkOrderId ?? "").toString().trim();
+      patch.qikinkOrderId = normalized.length ? normalized : null;
+    }
 
-    // qlinkOrderId (optional) — normalize "" -> null
-    if (Object.prototype.hasOwnProperty.call(req.body, 'qlinkOrderId')) {
-      const normalized = (qlinkOrderId ?? '').toString().trim();
-      patch.qlinkOrderId = normalized.length ? normalized : null;
+    // paymentmode (optional)
+    if (typeof paymentmode !== "undefined") {
+      const validModes = ["COD", "Prepaid"];
+      if (!validModes.includes(paymentmode)) {
+        return res.status(400).json({ error: "Invalid payment mode" });
+      }
+      patch.paymentmode = paymentmode;
     }
 
     if (Object.keys(patch).length === 0) {
