@@ -1,11 +1,13 @@
+// server.js (or app.js)
 const express = require("express");
 const bcrypt = require("bcrypt");
-const EmployeesAcc = require("./DataBase/Models/EmployessAcc");
-
-const app = express();
-const conntectDb = require("./DataBase/DBConnection");
 const cors = require("cors");
+require("dotenv").config();
 
+const EmployeesAcc = require("./DataBase/Models/EmployessAcc");
+const conntectDb = require("./DataBase/DBConnection");
+
+// Routers
 const UserRoute = require("./Router/userRoute.js");
 const ProdcutsRoute = require("./Router/ProdcutsRoute");
 const SubCategoryRoute = require("./Router/SubcatogryRoutes.js");
@@ -16,50 +18,72 @@ const DesignRoute = require("./Router/DesignRoutes.js");
 const paymentRoute = require("./Router/paymentRoutes.js");
 const completedorderRoutes = require("./Router/CompletedOrderRoutes.js");
 const orderRoutes = require("./Router/orderRoutes.js");
-const analytics = require("./Router/analytics");
-const { router } = require("./Router/DataRoutes.js");
+const analyticsRouter = require("./Router/analytics"); // exposes GET /sales
+const { router: dataRouter } = require("./Router/DataRoutes.js");
 const InvoiceRoutes = require("./Router/InvoiceRoutes.js");
 const BannerRoutes = require("./Router/BannerRoutes.js");
-const wallet = require("./Router/walletRoutes.js");
+const walletRoutes = require("./Router/walletRoutes.js");
 
-require('dotenv').config();
+// App + config
+const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(express.json({ limit: '2mb' }));
-app.use(cors());
+// If deploying behind a proxy (e.g., Render/Heroku), keep real IPs for rate/logging if you add later
+app.set("trust proxy", 1);
 
+// Core middleware
+app.use(cors()); // Allow all origins by default (tighten if needed)
+app.use(express.json({ limit: "2mb" }));
+
+// DB connect
 conntectDb();
 
-app.get('/', (req, res) => {
+// Health
+app.get("/health", (_req, res) => {
+  res.status(200).json({ ok: true, uptime: process.uptime() });
+});
+
+// Root
+app.get("/", (_req, res) => {
   res.send("hello");
 });
 
-app.use('/user', UserRoute);
-app.use('/products', ProdcutsRoute);
+// ======= Routes =======
+app.use("/user", UserRoute);
+app.use("/products", ProdcutsRoute);
 app.use("/subcategory", SubCategoryRoute);
 app.use("/category", CategoryRoute);
 app.use("/money", MoneyRoute);
-app.use('/api/imagekit', ImageKitRoute);
-app.use('/api', DesignRoute);
+
+app.use("/api/imagekit", ImageKitRoute);
+app.use("/api", DesignRoute);
 app.use("/api/payment", paymentRoute);
 app.use("/api", completedorderRoutes);
 app.use("/api", orderRoutes);
-app.use("/api", analytics);
+
+// 🔹 Analytics mounted on BOTH paths so both endpoints work:
+//    - /api/analytics/sales
+//    - /api/sales
+app.use("/api/analytics", analyticsRouter);
+app.use("/api", analyticsRouter);
+
 app.use("/api", require("./Router/LogisticsRoutes"));
 app.use("/api", require("./Router/chargePlanRoutes"));
 app.use("/api", require("./Router/bankDetails"));
 app.use("/api", require("./Router/employeesRoutes.js"));
 app.use("/api", BannerRoutes);
-app.use("/data", router);
+app.use("/data", dataRouter);
 app.use("/api", InvoiceRoutes);
-app.use("/api", wallet);
+app.use("/api", walletRoutes);
 
-// Updated admin login route to use db + bcrypt
+// ======= Admin login (bcrypt + DB) =======
 app.post("/api/admin/check", async (req, res) => {
   const { userid, password } = req.body || {};
 
   if (!userid || !password) {
-    return res.status(400).json({ ok: false, message: 'userid and password are required' });
+    return res
+      .status(400)
+      .json({ ok: false, message: "userid and password are required" });
   }
 
   try {
@@ -67,18 +91,31 @@ app.post("/api/admin/check", async (req, res) => {
     if (!user) {
       return res.status(401).json({ ok: false, message: "Invalid credentials" });
     }
+
     const ok = await bcrypt.compare(password, user.password);
     if (ok) {
       return res.status(200).json({ ok: true, message: "Admin authenticated" });
-    } else {
-      return res.status(401).json({ ok: false, message: "Invalid credentials" });
     }
+    return res.status(401).json({ ok: false, message: "Invalid credentials" });
   } catch (err) {
     return res.status(500).json({ ok: false, message: "Server error" });
   }
 });
 
+// ======= 404 fallback (keep after all routes) =======
+app.use((req, res, _next) => {
+  res.status(404).json({ ok: false, message: "Route not found" });
+});
 
+// ======= Minimal error handler =======
+app.use((err, _req, res, _next) => {
+  console.error("Unhandled error:", err);
+  res
+    .status(err.status || 500)
+    .json({ ok: false, message: err.message || "Server error" });
+});
+
+// Start
 app.listen(port, () => {
-  console.log("Connected Express");
+  console.log(`Connected Express on port ${port}`);
 });

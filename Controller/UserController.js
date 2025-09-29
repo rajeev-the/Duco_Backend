@@ -1,47 +1,34 @@
-const User = require('../DataBase/Models/UserModel');
-const Otp = require("../DataBase/Models/OtpModel")
-const sendOtpEmail =require("./sendMail")
+// Controller/UserController.js
+const User = require("../DataBase/Models/UserModel");
+const Otp = require("../DataBase/Models/OtpModel");
+const sendOtpEmail = require("./sendMail");
 
- 
-// const signup = async (req, res) => {
-//   const { number, name } = req.body;
-//   const verified = true;
+// === helpers ===============================================================
 
-//   try {
-//     const existingUser = await User.findOne({ number });
+const COOLDOWN_SECONDS = 60;
 
-//     if (existingUser) {
-//       return res.status(200).send({ message: "You already Exist" });
-//     }
+/** Extract a readable error message from SDK/HTTP/library errors */
+function extractError(err) {
+  // Resend / axios-style
+  const nested =
+    err?.response?.data?.error?.message ||
+    err?.response?.data?.message ||
+    err?.response?.data;
 
-//     if (!verified) {
-//       return res.status(401).send({ message: "Not verified" });
-//     }
+  const msg =
+    nested ||
+    err?.message ||
+    (typeof err === "string" ? err : null);
 
-//     const user = await User.create({ number, name }); // <-- directly create
-//     return res.status(201).send({ message: "User Created", user });
+  try {
+    // include some structure for debugging in Postman
+    return msg || JSON.stringify(err, Object.getOwnPropertyNames(err));
+  } catch {
+    return msg || "Unknown error";
+  }
+}
 
-//   } catch (error) {
-//     console.error('Signup error:', error);
-//     res.status(500).send({ message: "Something went wrong", error });
-//   }
-// };
-
-
-// const login = async(req,res)=>{
-    
-//     const {number} = req.body;
-
-//     const data = await User.findOne({number : number});
-
-//     if (data){
-//         res.status(200).send({message : "login successfully" ,user:data});
-//     }
-//     else{
-//         res.status(200).send({message:"Your Account doesn't exit"})
-//     }
-// }
-
+// === controllers ===========================================================
 
 // Add address to user's address array
 const addAddressToUser = async (req, res) => {
@@ -49,104 +36,143 @@ const addAddressToUser = async (req, res) => {
     const { userId, newAddress } = req.body;
 
     if (!userId || !newAddress) {
-      return res.status(400).json({ message: "userId and newAddress are required." });
+      return res
+        .status(400)
+        .json({ ok: false, message: "userId and newAddress are required." });
     }
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { $push: { address: newAddress } }, // Push new address into array
-      { new: true, runValidators: true } // Return updated document
+      { $push: { address: newAddress } },
+      { new: true, runValidators: true }
     );
 
     if (!updatedUser) {
-      return res.status(404).json({ message: "User not found." });
+      return res.status(404).json({ ok: false, message: "User not found." });
     }
 
     return res.status(200).json({
+      ok: true,
       message: "Address added successfully.",
-      user: updatedUser
+      user: updatedUser,
     });
-
   } catch (error) {
     console.error("Error adding address:", error);
-    return res.status(500).json({ message: "Server error." });
+    return res
+      .status(500)
+      .json({ ok: false, message: "Server error.", error: extractError(error) });
   }
 };
 
 const sendOtp = async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ message: 'Email is required' });
+  if (!email)
+    return res.status(400).json({ ok: false, message: "Email is required" });
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   try {
-    // Check if user already exists
+    // Cooldown: block if an OTP was created within the last 60s for this email
+    const recent = await Otp.findOne({
+      email,
+      createdAt: { $gte: new Date(Date.now() - COOLDOWN_SECONDS * 1000) },
+    });
+    if (recent) {
+      return res.status(429).json({
+        ok: false,
+        message: `Please wait ${COOLDOWN_SECONDS}s before requesting a new OTP.`,
+      });
+    }
+
+    // Check if user exists
     const user = await User.findOne({ email });
 
-    // Save OTP in DB
-    await Otp.create({ email, otp });
+    // Replace any existing OTPs for this email with a fresh one
+    await Otp.deleteMany({ email });
+    await Otp.create({ email, otp }); // TTL expiry handled by schema (expires: 300)
 
-    // Send email with OTP
+    // Send email with OTP (via Resend)
     await sendOtpEmail(email, otp);
 
-    // Send response with user existence info
     return res.status(200).json({
-      message: 'OTP sent to your Gmail',
-      userExists: !!user, // true or false
+      ok: true,
+      message: "OTP sent successfully",
+      userExists: !!user,
     });
   } catch (err) {
-    console.error('OTP send error:', err);
-    return res.status(500).json({ message: 'Error sending OTP' });
+    const detail = extractError(err);
+    console.error("OTP send error:", detail);
+    // Return the real error so you can see it in Postman:
+    return res
+      .status(500)
+      .json({ ok: false, message: "Error sending OTP", error: detail });
   }
 };
 
-// 2. Verify OTP and Login/Signup
+// Verify OTP and Login/Signup
 const verifyOtp = async (req, res) => {
-  const { email, otp, name } = req.body;
+  try {
+    const { email, otp, name } = req.body;
 
-  if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required' });
+    if (!email || !otp) {
+      return res
+        .status(400)
+        .json({ ok: false, message: "Email and OTP are required" });
+    }
 
-  const validOtp = await Otp.findOne({ email, otp });
+    const validOtp = await Otp.findOne({ email, otp });
+    if (!validOtp) {
+      return res
+        .status(400)
+        .json({ ok: false, message: "Invalid or expired OTP" });
+    }
 
-  if (!validOtp) {
-    return res.status(400).json({ message: 'Invalid or expired OTP' });
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = await User.create({
+        email,
+        name: name || "New User",
+        isVerified: true,
+      });
+    } else {
+      user.isVerified = true;
+      await user.save();
+    }
+
+    // Clean up used OTP(s)
+    await Otp.deleteMany({ email });
+
+    return res
+      .status(200)
+      .json({ ok: true, message: "Login/Signup successful", user });
+  } catch (error) {
+    const detail = extractError(error);
+    console.error("verifyOtp error:", detail);
+    return res
+      .status(500)
+      .json({ ok: false, message: "Server error", error: detail });
   }
-
-  let user = await User.findOne({ email });
-
-  if (!user) {
-    user = await User.create({ email, name: name || "New User", isVerified: true });
-  } else {
-    user.isVerified = true;
-    await user.save();
-  }
-
-  // Clean up used OTP
-  await Otp.deleteMany({ email });
-
-  return res.status(200).json({ message: 'Login/Signup successful', user });
 };
 
-const getUser = async (req,res)=>{
-    
+const getUser = async (_req, res) => {
   try {
-
-    const data1 = await User.find();
-    res.status(200).json(data1);
-    
+    const users = await User.find();
+    res.status(200).json({ ok: true, users });
   } catch (error) {
-    console.log(error)
-    
+    const detail = extractError(error);
+    console.error("getUser error:", detail);
+    res
+      .status(500)
+      .json({ ok: false, message: "Server error", error: detail });
   }
+};
 
-}
+// === exports ===============================================================
 
 module.exports = {
- 
-    addAddressToUser,
-    sendOtp,
-    verifyOtp,
-    getUser
-}
-
-
+  addAddressToUser,
+  sendOtp,
+  verifyOtp,
+  getUser,
+};
