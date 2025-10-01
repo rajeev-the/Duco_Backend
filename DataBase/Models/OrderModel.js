@@ -69,10 +69,11 @@ const OrderSchema = new Schema(
       default: "Pending",
     },
 
+    // ✅ Expanded enum to allow all modes you want
     paymentmode: {
       type: String,
-      enum: ["COD", "Prepaid"],
-      default: "Prepaid",
+      enum: ["online", "netbanking", "50%", "COD", "Prepaid"],
+      default: "online", // ✅ default is now "online"
     },
 
     qikinkOrderId: { type: String },
