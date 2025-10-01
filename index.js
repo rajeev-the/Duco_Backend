@@ -4,6 +4,11 @@ const bcrypt = require("bcrypt");
 const cors = require("cors");
 require("dotenv").config();
 
+//this is for fast loading of backend files...
+const compression = require("compression");
+
+
+
 const EmployeesAcc = require("./DataBase/Models/EmployessAcc");
 const conntectDb = require("./DataBase/DBConnection");
 
@@ -12,7 +17,7 @@ const UserRoute = require("./Router/userRoute.js");
 const ProdcutsRoute = require("./Router/ProdcutsRoute");
 const SubCategoryRoute = require("./Router/SubcatogryRoutes.js");
 const CategoryRoute = require("./Router/CategoryRoute.js");
-const MoneyRoute = require("./Router/MoneyRoute.js");s
+const MoneyRoute = require("./Router/MoneyRoute.js");
 const ImageKitRoute = require("./Router/imagekit.js");
 const DesignRoute = require("./Router/DesignRoutes.js");
 const paymentRoute = require("./Router/paymentRoutes.js");
@@ -30,6 +35,8 @@ const port = process.env.PORT || 3000;
 
 // If deploying behind a proxy (e.g., Render/Heroku), keep real IPs for rate/logging if you add later
 app.set("trust proxy", 1);
+
+app.use(compression());//this is for compression
 
 // Core middleware
 app.use(cors()); // Allow all origins by default (tighten if needed)

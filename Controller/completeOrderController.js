@@ -109,7 +109,13 @@ const completeOrder = async (req, res) => {
   try {
     const items = Array.isArray(orderData.items) ? orderData.items : [];
     const totalPay = safeNum(orderData.totalPay, 0);
-    const address = orderData.address;
+    const address = {
+      ...orderData.address,
+      email:
+        orderData.address?.email ||
+        orderData.user?.email ||
+        "not_provided@duco.com",
+    };
     const user = orderData.user;
 
     // --- Case 1: Bank Transfer / Manual (no Razorpay call) ---
@@ -121,7 +127,7 @@ const completeOrder = async (req, res) => {
         user: user._id,
         razorpayPaymentId: paymentId || null,
         status: "Pending",
-        paymentmode: "Bank Transfer",
+        paymentmode, // ✅ keep as "netbanking"
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
@@ -195,7 +201,7 @@ const completeOrder = async (req, res) => {
         user: user._id,
         razorpayPaymentId: payment.id,
         status: "Pending",
-        paymentmode: "Razorpay",
+        paymentmode, // ✅ keep as "online"
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
@@ -269,7 +275,7 @@ const completeOrder = async (req, res) => {
         user: user._id,
         razorpayPaymentId: payment.id,
         status: "Pending",
-        paymentmode: "Razorpay",
+        paymentmode, // ✅ keep as "50%"
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
@@ -342,24 +348,8 @@ const completeOrder = async (req, res) => {
       .status(400)
       .json({ success: false, message: "Invalid payment mode" });
   } catch (err) {
-    // Best-effort rollback & refund
-    try {
-      if (payment?.id) {
-        await razorpay.payments.refund(payment.id);
-      }
-    } catch (e) {
-      console.error("Refund attempt failed:", e);
-    }
-
-    try {
-      if (order?._id) {
-        await Order.findByIdAndDelete(order._id);
-      }
-    } catch (e) {
-      console.error("Order rollback failed:", e);
-    }
-
     console.error("💥 completeOrder failed:", err);
+
     return res
       .status(500)
       .json({ success: false, message: err.message || "Internal error" });
