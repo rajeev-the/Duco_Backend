@@ -11,12 +11,20 @@ const toNum = (v, name) => {
 function normalizeRange(raw, label) {
   const minqty = toNum(raw.minqty, `${label}.minqty`);
   const maxqty = toNum(raw.maxqty, `${label}.maxqty`);
-  const cost   = toNum(raw.cost,   `${label}.cost`);
 
   if (minqty < 1) throw new Error(`${label}.minqty must be >= 1`);
   if (maxqty < minqty) throw new Error(`${label}.maxqty must be >= minqty`);
-  if (cost < 0) throw new Error(`${label}.cost must be >= 0`);
 
+  // ✅ If this is GST, we expect "percent"
+  if (raw.percent != null) {
+    const percent = toNum(raw.percent, `${label}.percent`);
+    if (percent < 0) throw new Error(`${label}.percent must be >= 0`);
+    return { minqty, maxqty, percent };
+  }
+
+  // ✅ Otherwise it's cost per unit
+  const cost = toNum(raw.cost, `${label}.cost`);
+  if (cost < 0) throw new Error(`${label}.cost must be >= 0`);
   return { minqty, maxqty, cost };
 }
 
@@ -39,20 +47,20 @@ function validateAndSortTiers(arr, keyName) {
   return tiers;
 }
 
-function findCostForQty(tiers, qty, label) {
+function findTierValue(tiers, qty, label) {
   const hit = tiers.find(t => qty >= t.minqty && qty <= t.maxqty);
   if (!hit) throw new Error(`No matching ${label} tier for qty=${qty}`);
-  return hit.cost;
+  return hit.percent != null ? hit.percent : hit.cost; // ✅ GST uses percent
 }
 
 async function getOrCreateSinglePlan() {
   let plan = await ChargePlan.findOne();
   if (!plan) {
-    // Create a very safe baseline (0 cost, huge upper bound)
+    // Create a very safe baseline (0 cost, huge upper bound, 0% GST)
     plan = await ChargePlan.create({
       pakageingandforwarding: [{ minqty: 1, maxqty: 1_000_000_000, cost: 0 }],
       printingcost:           [{ minqty: 1, maxqty: 1_000_000_000, cost: 0 }],
-      gst:                    [{ minqty: 1, maxqty: 1_000_000_000, cost: 0 }],
+      gst:                    [{ minqty: 1, maxqty: 1_000_000_000, percent: 0 }],
     });
   }
   return plan;
@@ -108,17 +116,16 @@ exports.getRatesForQty = async (req, res) => {
     }
 
     const plan = await getOrCreateSinglePlan();
-    const packaging = findCostForQty(plan.pakageingandforwarding, qty, "pakageingandforwarding");
-    const printing  = findCostForQty(plan.printingcost, qty, "printingcost");
-    const gst       = findCostForQty(plan.gst, qty, "gst");
+    const packaging = findTierValue(plan.pakageingandforwarding, qty, "pakageingandforwarding");
+    const printing  = findTierValue(plan.printingcost, qty, "printingcost");
+    const gstPercent = findTierValue(plan.gst, qty, "gst"); // ✅ percent
 
-    const perUnit = { pakageingandforwarding: packaging, printingcost: printing, gst };
     res.json({
       success: true,
       data: {
         qty,
-        perUnit,
-      
+        perUnit: { pakageingandforwarding: packaging, printingcost: printing },
+        gstPercent, // ✅ send as percent
       }
     });
   } catch (e) {
@@ -133,22 +140,27 @@ exports.getTotalsForQty = async (req, res) => {
       return res.status(400).json({ success: false, error: "qty must be a number >= 1" });
     }
 
-    const plan = await getOrCreateSinglePlan();
-    const packaging = findCostForQty(plan.pakageingandforwarding, qty, "pakageingandforwarding");
-    const printing  = findCostForQty(plan.printingcost, qty, "printingcost");
-    const gst       = findCostForQty(plan.gst, qty, "gst");
+    const subtotal = Number(req.query.subtotal ?? req.body?.subtotal ?? 0);
 
-    
+    const plan = await getOrCreateSinglePlan();
+    const packaging = findTierValue(plan.pakageingandforwarding, qty, "pakageingandforwarding");
+    const printing  = findTierValue(plan.printingcost, qty, "printingcost");
+    const gstPercent = findTierValue(plan.gst, qty, "gst");
+
+    const pfTotal = packaging * qty;
+    const printTotal = printing * qty;
+    const gstAmount = (subtotal * gstPercent) / 100;
+
     res.json({
       success: true,
       data: {
         qty,
-        perUnit: { pakageingandforwarding: packaging, printingcost: printing, gst },
+        perUnit: { pakageingandforwarding: packaging, printingcost: printing },
         totals: {
-          pakageingandforwarding: packaging * qty,
-          printingcost: printing * qty,
-          gst: gst * qty,
-         
+          pakageingandforwarding: pfTotal,
+          printingcost: printTotal,
+          gstPercent,
+          gstAmount,
         }
       }
     });
