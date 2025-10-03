@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-
 const { Schema } = mongoose;
 
 // Company Schema
@@ -16,18 +15,17 @@ const CompanySchema = new Schema({
 // Invoice Info Schema
 const InvoiceInfoSchema = new Schema({
   number: { type: String, required: true },
-  date: { type: String, required: true },   // or Date if you want to store as Date
+  date: { type: String, required: true },
   placeOfSupply: { type: String },
   reverseCharge: { type: Boolean, default: false },
   copyType: { type: String, default: "Original Copy" },
 }, { _id: false });
 
-// Party Schema (BillTo / ShipTo)
+// Party Schema
 const PartySchema = new Schema({
   name: { type: String, required: true },
   address: { type: String },
   gstin: { type: String },
-
 }, { _id: false });
 
 // Item Schema
@@ -46,10 +44,11 @@ const ChargesSchema = new Schema({
   printing: { type: Number, default: 0 },
 }, { _id: false });
 
-// Tax Schema
+// Tax Schema (dynamic)
 const TaxSchema = new Schema({
   cgstRate: { type: Number, default: 0 },
   sgstRate: { type: Number, default: 0 },
+  igstRate: { type: Number, default: 0 },
 }, { _id: false });
 
 // Main Invoice Schema
@@ -62,12 +61,9 @@ const InvoiceSchema = new Schema({
   tax: { type: TaxSchema, default: {} },
   terms: [{ type: String }],
   forCompany: { type: String, required: true },
-  order:{
-     type:mongoose.Schema.Types.ObjectId,ref:"Order"
-  }
+  order: { type: mongoose.Schema.Types.ObjectId, ref: "Order" }
 }, { timestamps: true });
 
 InvoiceSchema.index({ order: 1 }, { unique: true, sparse: true });
-
 
 module.exports = mongoose.model("Invoice", InvoiceSchema);

@@ -1,8 +1,5 @@
 const Invoice = require("../DataBase/Models/InvoiceModule");
-
-
 const mongoose = require("mongoose");
-
 
 // ------- Helpers -------
 const safeNum = (v, fb = 0) => {
@@ -19,12 +16,16 @@ const computeTotals = (doc = {}) => {
   const chargesTotal = ["pf", "printing"].reduce((s, k) => s + safeNum(charges[k]), 0);
   const taxableValue = subtotal + chargesTotal;
 
+  // Use dynamic tax rates
   const cgstRate = safeNum(tax.cgstRate);
   const sgstRate = safeNum(tax.sgstRate);
+  const igstRate = safeNum(tax.igstRate);
+
   const cgstAmt = (taxableValue * cgstRate) / 100;
   const sgstAmt = (taxableValue * sgstRate) / 100;
+  const igstAmt = (taxableValue * igstRate) / 100;
 
-  const grandTotal = taxableValue + cgstAmt + sgstAmt;
+  const grandTotal = taxableValue + cgstAmt + sgstAmt + igstAmt;
 
   return {
     subtotal: +subtotal.toFixed(2),
@@ -32,6 +33,7 @@ const computeTotals = (doc = {}) => {
     taxableValue: +taxableValue.toFixed(2),
     cgstAmt: +cgstAmt.toFixed(2),
     sgstAmt: +sgstAmt.toFixed(2),
+    igstAmt: +igstAmt.toFixed(2),
     grandTotal: +grandTotal.toFixed(2),
     totalQty: items.reduce((q, i) => q + safeNum(i.qty), 0),
   };
@@ -54,78 +56,70 @@ async function createInvoice(data) {
   if (!Array.isArray(data?.items) || data.items.length === 0) throw new Error("items[] is required");
   if (!data?.forCompany) throw new Error("forCompany is required");
 
+  // ------- DYNAMIC TAX CALCULATION -------
+  const companyState = (data.company?.state || "").trim().toLowerCase();
+  const supplyState = (data.invoice?.placeOfSupply || "").trim().toLowerCase();
+  const isSameState = companyState && supplyState && companyState === supplyState;
+
+  data.tax = {
+    cgstRate: isSameState ? 2.5 : 0,
+    sgstRate: isSameState ? 2.5 : 0,
+    igstRate: isSameState ? 0 : 5
+  };
+  // --------------------------------------
+
   const invoice = await Invoice.create(data);
   const obj = invoice.toObject();
   const totals = computeTotals(obj);
   return { invoice, totals };
 }
 
-
 async function getInvoiceByOrderId(orderId) {
-  // Try to coerce to ObjectId if valid
   const asObjectId = mongoose.isValidObjectId(orderId)
     ? new mongoose.Types.ObjectId(orderId)
     : null;
 
-  // Try both patterns:
-  //  1) { order: ObjectId }       -> typical Mongoose ref to Order
-  //  2) { orderId: <string|id> }  -> some apps store the order id as a string
   const query = {
     $or: [
       ...(asObjectId ? [{ order: asObjectId }] : []),
-      { orderId: orderId }, // keep as string for exact match
+      { orderId: orderId },
     ],
   };
 
-  // Get the latest invoice for that order
   const invoiceDoc = await Invoice.findOne(query).sort({ createdAt: -1 });
 
   if (!invoiceDoc) {
     throw new Error("Invoice not found for this order");
   }
 
-  // If computeTotals expects a POJO, use .toObject(); if it’s already OK with a doc, you can pass invoiceDoc directly
   const invoiceObj = invoiceDoc.toObject ? invoiceDoc.toObject() : invoiceDoc;
-  
-
-
   return { invoice: invoiceObj };
 }
 
-
-// Get list with filters
-// Supports: number (exact/partial), gstin (billTo), forCompany, name (billTo.name partial),
-// date range (from, to) even when invoice.date is a String in "DD-MM-YYYY" or ISO.
 async function getInvoices(filters = {}) {
   const {
-    number,            // string - partial ok
-    gstin,             // string - billTo.gstin
-    forCompany,        // string
-    name,              // string - billTo.name (partial)
-    from,              // "YYYY-MM-DD" preferred; also accepts "DD-MM-YYYY"
-    to,                // same as above
+    number,
+    gstin,
+    forCompany,
+    name,
+    from,
+    to,
     page = 1,
     limit = 20,
-    sort = "-createdAt", // or "invoice.number" etc
+    sort = "-createdAt",
   } = filters;
 
   const pageN = Math.max(1, parseInt(page, 10));
   const limitN = Math.max(1, parseInt(limit, 10));
   const skipN = (pageN - 1) * limitN;
 
-  // Build $match for non-date filters
   const match = {};
-  if (number) {
-    // partial match on invoice.number
-    match["invoice.number"] = { $regex: String(number).trim(), $options: "i" };
-  }
+  if (number) match["invoice.number"] = { $regex: String(number).trim(), $options: "i" };
   if (gstin) match["billTo.gstin"] = String(gstin).trim();
   if (forCompany) match.forCompany = String(forCompany).trim();
   if (name) match["billTo.name"] = { $regex: String(name).trim(), $options: "i" };
 
-  // Build sort stage
   const sortStage = {};
-  // allow "-field" or "field"
   String(sort)
     .split(/\s+/)
     .filter(Boolean)
@@ -134,8 +128,6 @@ async function getInvoices(filters = {}) {
       else sortStage[key] = 1;
     });
 
-  // Date parsing helper: we’ll parse at query-time inside the pipeline
-  // invoice.date could be either "DD-MM-YYYY" or ISO "YYYY-MM-DD"
   const pipeline = [
     { $match: match },
     {
@@ -163,15 +155,11 @@ async function getInvoices(filters = {}) {
     },
   ];
 
-  // Range filter if provided
   if (from || to) {
-    // Convert filter strings to real Date in JS; DB compares with those
     const parseBound = (s) => {
       if (!s) return null;
-      // try ISO first
       const iso = new Date(s);
       if (!Number.isNaN(iso.valueOf())) return iso;
-      // try DD-MM-YYYY
       const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(String(s));
       if (m) {
         const [_, dd, mm, yyyy] = m;
@@ -186,7 +174,6 @@ async function getInvoices(filters = {}) {
     const dateMatch = {};
     if (fromDate) dateMatch.$gte = fromDate;
     if (toDate) {
-      // set to end-of-day inclusive
       const end = new Date(toDate);
       end.setUTCHours(23, 59, 59, 999);
       dateMatch.$lte = end;
@@ -194,7 +181,6 @@ async function getInvoices(filters = {}) {
     pipeline.push({ $match: { _parsedDate: dateMatch } });
   }
 
-  // Sorting, pagination, and total count in one go
   pipeline.push(
     { $sort: Object.keys(sortStage).length ? sortStage : { createdAt: -1 } },
     {
@@ -215,12 +201,10 @@ async function getInvoices(filters = {}) {
   const rows = agg?.rows || [];
   const total = agg?.total || 0;
 
-  // Populate order for returned rows (if you need it)
   const populated = await Invoice.populate(rows, { path: "order" });
 
   const data = populated.map((inv) => {
-    const obj = inv; // already plain from aggregate
-    // remove helper field if present
+    const obj = inv;
     delete obj._parsedDate;
     return { invoice: obj, totals: computeTotals(obj) };
   });
@@ -228,7 +212,6 @@ async function getInvoices(filters = {}) {
   return { total, page: pageN, limit: limitN, data };
 }
 
-// Get by invoice number (exact)
 async function getInvoiceByNumber(number) {
   const invoice = await Invoice.findOne({ "invoice.number": String(number).trim() }).populate("order");
   if (!invoice) throw new Error("Invoice not found");
