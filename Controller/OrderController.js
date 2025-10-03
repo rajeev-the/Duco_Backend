@@ -1,7 +1,57 @@
-// controllers/orderController.js
 const mongoose = require("mongoose");
 const Order = require("../DataBase/Models/OrderModel");
+const Product = require("../DataBase/Models/ProductModel"); // ✅ needed to fetch product details
 
+// ---------------- CREATE ORDER ----------------
+exports.createOrder = async (req, res) => {
+  try {
+    const { user, items, amount, paymentStatus, paymentmode } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "No items provided" });
+    }
+
+    // Enrich each item with product details
+    const enrichedItems = await Promise.all(
+      items.map(async (it) => {
+        const product = await Product.findById(it.productId);
+
+        if (!product) {
+          throw new Error(`Product not found: ${it.productId}`);
+        }
+
+        return {
+          product: product._id,
+          name: product.name,                   // ✅ save product name
+          image: product.image_url?.[0] || "",  // ✅ save thumbnail
+          qty: it.qty,
+          size: it.size,
+          color: it.color,
+          price: it.price ?? product.price,
+
+          // ✅ carry custom design data if provided
+          design: it.design || {},
+        };
+      })
+    );
+
+    const order = await Order.create({
+      user,
+      items: enrichedItems,
+      amount,
+      status: "Pending",
+      paymentStatus: paymentStatus || "Paid",
+      paymentmode: paymentmode || "Prepaid",
+    });
+
+    res.status(201).json(order);
+  } catch (err) {
+    console.error("Error creating order:", err);
+    res.status(500).json({ error: "Failed to create order" });
+  }
+};
+
+// ---------------- GET ORDERS BY USER ----------------
 exports.getOrdersByUser = async (req, res) => {
   try {
     const userId = req.params.userId || req.user?._id;
@@ -10,8 +60,7 @@ exports.getOrdersByUser = async (req, res) => {
       return res.status(400).json({ error: "Invalid or missing userId" });
     }
 
-    const sort = req.query.sort || "-createdAt"; // default: newest first
-
+    const sort = req.query.sort || "-createdAt";
     const orders = await Order.find({ user: userId }).sort(sort);
 
     return res.json(orders);
@@ -21,10 +70,10 @@ exports.getOrdersByUser = async (req, res) => {
   }
 };
 
-// Get all orders sorted by newest first
+// ---------------- GET ALL ORDERS ----------------
 exports.getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 }); // -1 means descending
+    const orders = await Order.find().sort({ createdAt: -1 });
     res.json(orders);
   } catch (err) {
     console.error("Error fetching orders:", err);
@@ -32,12 +81,10 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
-// Get single order by ID
+// ---------------- GET ORDER BY ID ----------------
 exports.getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Find order by ID
     const order = await Order.findById(id);
 
     if (!order) {
@@ -51,27 +98,19 @@ exports.getOrderById = async (req, res) => {
   }
 };
 
+// ---------------- UPDATE ORDER STATUS ----------------
 exports.updateOrderStatus = async (req, res) => {
   const { id } = req.params;
   const { status, qikinkOrderId, paymentmode } = req.body || {};
 
   try {
-    // ✅ Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: "Invalid order ID" });
     }
 
-    // ✅ Build a safe patch
     const patch = {};
-    const validStatuses = [
-      "Pending",
-      "Processing",
-      "Shipped",
-      "Delivered",
-      "Cancelled",
-    ];
+    const validStatuses = ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
 
-    // status (optional)
     if (typeof status !== "undefined") {
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ error: "Invalid status value" });
@@ -79,13 +118,11 @@ exports.updateOrderStatus = async (req, res) => {
       patch.status = status;
     }
 
-    // qikinkOrderId (optional) — normalize "" -> null
     if (Object.prototype.hasOwnProperty.call(req.body, "qikinkOrderId")) {
       const normalized = (qikinkOrderId ?? "").toString().trim();
       patch.qikinkOrderId = normalized.length ? normalized : null;
     }
 
-    // paymentmode (optional)
     if (typeof paymentmode !== "undefined") {
       const validModes = ["COD", "Prepaid"];
       if (!validModes.includes(paymentmode)) {
@@ -98,7 +135,6 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(400).json({ error: "Nothing to update" });
     }
 
-    // ✅ Update
     const order = await Order.findByIdAndUpdate(
       id,
       { $set: patch },
