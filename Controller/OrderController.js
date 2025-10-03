@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const Order = require("../DataBase/Models/OrderModel");
-const Product = require("../DataBase/Models/ProductModel"); // ✅ needed to fetch product details
+const product = require("../DataBase/Models/ProductsModel"); // ✅ needed to fetch product details
 
 // ---------------- CREATE ORDER ----------------
 exports.createOrder = async (req, res) => {
