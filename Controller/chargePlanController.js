@@ -55,14 +55,21 @@ function findTierValue(tiers, qty, label) {
 
 async function getOrCreateSinglePlan() {
   let plan = await ChargePlan.findOne();
-  if (!plan) {
-    // Create a very safe baseline (0 cost, huge upper bound, 0% GST)
-    plan = await ChargePlan.create({
-      pakageingandforwarding: [{ minqty: 1, maxqty: 1_000_000_000, cost: 0 }],
-      printingcost:           [{ minqty: 1, maxqty: 1_000_000_000, cost: 0 }],
-      gst:                    [{ minqty: 1, maxqty: 1_000_000_000, percent: 0 }],
-    });
-  }
+if (!plan) {
+  // ✅ Create baseline plan with 5% GST instead of 0%
+  plan = await ChargePlan.create({
+    pakageingandforwarding: [
+      { minqty: 1, maxqty: 1_000_000_000, cost: 0 }
+    ],
+    printingcost: [
+      { minqty: 1, maxqty: 1_000_000_000, cost: 0 }
+    ],
+    // ✅ Use "percent" not "cost"
+    gst: [
+      { minqty: 1, maxqty: 1_000_000_000, percent: 5 }
+    ],
+  });
+}
   return plan;
 }
 
