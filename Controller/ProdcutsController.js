@@ -1,6 +1,5 @@
-const Product = require('../DataBase/Models/ProductsModel')
-const mongoose = require('mongoose'); 
-
+const Product = require("../DataBase/Models/ProductsModel");
+const mongoose = require("mongoose");
 
 const CreateProdcuts = async (req, res) => {
   try {
@@ -11,10 +10,20 @@ const CreateProdcuts = async (req, res) => {
       Desciptions,
       subcategory,
       gender = "Male", // Default to Male if not provided
+      printroveProductId,
+      printroveVariantId,
     } = req.body;
 
-    if (!products_name || !image_url || !pricing || !Desciptions || !subcategory) {
-      return res.status(400).send({ message: "All required fields must be provided" });
+    if (
+      !products_name ||
+      !image_url ||
+      !pricing ||
+      !Desciptions ||
+      !subcategory
+    ) {
+      return res
+        .status(400)
+        .send({ message: "All required fields must be provided" });
     }
 
     const product = new Product({
@@ -24,18 +33,21 @@ const CreateProdcuts = async (req, res) => {
       Desciptions,
       subcategory,
       gender, // Now included
+      printroveProductId,
+      printroveVariantId,
     });
 
     const savedProduct = await product.save();
 
     return res.status(201).send({
       message: "Product created successfully",
-      product: savedProduct
+      product: savedProduct,
     });
-
   } catch (error) {
     console.error(`❌ Error creating product: ${error.message}`);
-    return res.status(500).send({ message: "Server error while creating product" });
+    return res
+      .status(500)
+      .send({ message: "Server error while creating product" });
   }
 };
 
@@ -50,7 +62,7 @@ const GetProducts = async (req, res) => {
 };
 
 const GetProductssingle = async (req, res) => {
-  const {prodcutsid} = req.params
+  const { prodcutsid } = req.params;
   try {
     const data = await Product.findById(prodcutsid); // fetch all products
     res.status(200).json(data); // return with status 200
@@ -60,49 +72,40 @@ const GetProductssingle = async (req, res) => {
   }
 };
 
-
 const deleteProduct = async (req, res) => {
- 
   const productId = req.params.productId || req.params.prodcutsid;
 
   if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
-    return res.status(400).json({ message: 'Invalid product id' });
+    return res.status(400).json({ message: "Invalid product id" });
   }
 
   try {
-   
-
     const deleted = await Product.findByIdAndDelete(productId);
     if (!deleted) {
-      return res.status(404).json({ message: 'Product not found' });
+      return res.status(404).json({ message: "Product not found" });
     }
 
     return res.status(200).json({
-      message: 'Product deleted successfully',
+      message: "Product deleted successfully",
       product: deleted,
     });
-
   } catch (error) {
-    console.error('Error deleting product:', error);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Error deleting product:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-
-
 const GetProductsSubcategory = async (req, res) => {
-
-      const {idsub} = req.params
+  const { idsub } = req.params;
 
   try {
-    const data = await Product.find({subcategory:idsub}); // fetch all products
+    const data = await Product.find({ subcategory: idsub }); // fetch all products
     res.status(200).json(data); // return with status 200
   } catch (error) {
     console.error("Error fetching products:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
 
 // PUT /api/products/:id
 const updateProduct = async (req, res) => {
@@ -112,7 +115,7 @@ const updateProduct = async (req, res) => {
 
     // Optional: Validate ObjectId
     if (!productId.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).json({ error: 'Invalid product ID' });
+      return res.status(400).json({ error: "Invalid product ID" });
     }
 
     // Optional: Recalculate Stock if image_url/content is provided
@@ -134,25 +137,24 @@ const updateProduct = async (req, res) => {
     });
 
     if (!updatedProduct) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ error: "Product not found" });
     }
 
-    res.status(200).json({ message: 'Product updated successfully', product: updatedProduct });
+    res.status(200).json({
+      message: "Product updated successfully",
+      product: updatedProduct,
+    });
   } catch (error) {
-    console.error('Error updating product:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error("Error updating product:", error);
+    res.status(500).json({ error: "Server error" });
   }
 };
 
-
-
-
-
 module.exports = {
-    CreateProdcuts,
-    GetProducts,
-    GetProductssingle,
-    GetProductsSubcategory,
-    updateProduct,
-    deleteProduct
-}
+  CreateProdcuts,
+  GetProducts,
+  GetProductssingle,
+  GetProductsSubcategory,
+  updateProduct,
+  deleteProduct,
+};

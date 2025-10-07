@@ -7,8 +7,6 @@ require("dotenv").config();
 //this is for fast loading of backend files...
 const compression = require("compression");
 
-
-
 const EmployeesAcc = require("./DataBase/Models/EmployessAcc");
 const conntectDb = require("./DataBase/DBConnection");
 
@@ -28,6 +26,7 @@ const { router: dataRouter } = require("./Router/DataRoutes.js");
 const InvoiceRoutes = require("./Router/InvoiceRoutes.js");
 const BannerRoutes = require("./Router/BannerRoutes.js");
 const walletRoutes = require("./Router/walletRoutes.js");
+const printroveRoutes = require("./Router/printroveRoutes.js");
 
 // App + config
 const app = express();
@@ -36,7 +35,7 @@ const port = process.env.PORT || 3000;
 // If deploying behind a proxy (e.g., Render/Heroku), keep real IPs for rate/logging if you add later
 app.set("trust proxy", 1);
 
-app.use(compression());//this is for compression
+app.use(compression()); //this is for compression
 
 // Core middleware
 app.use(cors()); // Allow all origins by default (tighten if needed)
@@ -67,6 +66,7 @@ app.use("/api", DesignRoute);
 app.use("/api/payment", paymentRoute);
 app.use("/api", completedorderRoutes);
 app.use("/api", orderRoutes);
+app.use("/api/printrove", printroveRoutes);
 
 // 🔹 Analytics mounted on BOTH paths so both endpoints work:
 //    - /api/analytics/sales
@@ -96,7 +96,9 @@ app.post("/api/admin/check", async (req, res) => {
   try {
     const user = await EmployeesAcc.findOne({ employeeid: userid });
     if (!user) {
-      return res.status(401).json({ ok: false, message: "Invalid credentials" });
+      return res
+        .status(401)
+        .json({ ok: false, message: "Invalid credentials" });
     }
 
     const ok = await bcrypt.compare(password, user.password);

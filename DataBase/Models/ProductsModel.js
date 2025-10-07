@@ -13,45 +13,48 @@ const productSchema = new mongoose.Schema(
         content: [
           {
             minstock: { type: Number, default: 1 },
-            size: { type: String, required: true }
-          }
+            size: { type: String, required: true },
+          },
         ],
-        designtshirt:[
+        designtshirt: [
           {
-            type:String
-          }
-        ]
-      }
+            type: String,
+          },
+        ],
+      },
     ],
 
     pricing: [
       {
         quantity: { type: Number, required: true },
         price_per: { type: Number, required: true },
-        discount: { type: Number, default: 0, min: 0, max: 100 }
-      }
+        discount: { type: Number, default: 0, min: 0, max: 100 },
+      },
     ],
 
     Stock: {
       type: Number,
       required: true,
       default: 0,
-      min: 0
+      min: 0,
     },
 
     Desciptions: [{ type: String, required: true }],
-   gender: {
-  type: String,
-  required: true,
-  default: "Male"
-},
-
+    gender: {
+      type: String,
+      required: true,
+      default: "Male",
+    },
 
     subcategory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Subcategory", // fix typo if needed
-      required: true
-    }
+      required: true,
+    },
+
+    // ✅ New fields for Printrove mapping
+    printroveProductId: { type: Number },
+    printroveVariantId: { type: Number },
   },
   { timestamps: true }
 );
