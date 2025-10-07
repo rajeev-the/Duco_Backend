@@ -120,14 +120,33 @@ async function listPrintroveProductsWithVariants() {
   for (const p of products) {
     try {
       const detail = await getPrintroveProduct(p.id);
+
+      // 👇 Add this line — it will show one full variant structure for debugging
+      console.log(
+        `🧩 Printrove Product ${p.id} example variant:`,
+        detail?.product?.variants?.[0]
+      );
+
       detailed.push({
         id: p.id,
         name: p.name,
         variants:
           detail?.product?.variants?.map((v) => ({
             id: v.id,
-            color: v.color,
-            size: v.size,
+            color:
+              v.color ||
+              v.product?.color ||
+              v.attributes?.color ||
+              (v.sku && v.sku.split(" ")[1]) ||
+              "",
+            size:
+              v.size ||
+              v.product?.size ||
+              v.attributes?.size ||
+              (v.sku && v.sku.split(" ")[2]) ||
+              "",
+            mockup_front: v.mockup?.front_mockup || "",
+            mockup_back: v.mockup?.back_mockup || "",
           })) || [],
       });
     } catch (err) {
