@@ -83,13 +83,16 @@ const OrderSchema = new Schema(
       enum: [
         "Pending",
         "Processing",
+        "Received",
         "Dispatched",
         "Delivered",
         "Cancelled",
         "Error",
+        "success", // added lowercase success (API response)
       ],
       default: "Pending",
     },
+
     printroveItems: { type: Array, default: [] }, // store Printrove line-items
     printroveTrackingUrl: { type: String, default: "" }, // tracking link if available
     // ----------------------------------------------------

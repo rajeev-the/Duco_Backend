@@ -40,11 +40,17 @@ async function createPrintroveOrder(order) {
       design: {
         front: {
           url: p.design?.frontImage || "",
-          dimensions: { width: 10, height: 10, top: 5, left: 5 },
+          height: 12,
+          width: 10,
+          top: 5,
+          left: 4,
         },
         back: {
           url: p.design?.backImage || "",
-          dimensions: { width: 10, height: 10, top: 5, left: 5 },
+          height: 12,
+          width: 10,
+          top: 5,
+          left: 4,
         },
       },
     })),
