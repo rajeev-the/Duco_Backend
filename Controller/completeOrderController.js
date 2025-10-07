@@ -1,6 +1,6 @@
-// 📁 controllers/completeOrder.js
 const Razorpay = require("razorpay");
 const Order = require("../DataBase/Models/OrderModel");
+const Design = require("../DataBase/Models/DesignModel");
 const { createInvoice } = require("./invoiceService");
 const { getOrCreateSingleton } = require("../Router/DataRoutes");
 const { createTransaction } = require("./walletController");
@@ -85,7 +85,7 @@ async function verifyRazorpayPayment(paymentId, expectedAmountINR) {
 }
 
 // ================================================================
-// Main Controller
+// COMPLETE ORDER
 // ================================================================
 const completeOrder = async (req, res) => {
   let { paymentId, orderData, paymentmode, compressed } = req.body || {};
@@ -124,7 +124,6 @@ const completeOrder = async (req, res) => {
         "not_provided@duco.com",
     };
 
-    // ✅ ensure user is always string (fixes CastError)
     const user =
       typeof orderData.user === "object"
         ? orderData.user._id
@@ -147,7 +146,6 @@ const completeOrder = async (req, res) => {
         printing: safeNum(orderData.printing, 0),
       });
 
-      // ✅ Send to Printrove
       try {
         const printData = await createPrintroveOrder(order);
         order.printroveOrderId = printData?.id || null;
@@ -219,7 +217,6 @@ const completeOrder = async (req, res) => {
         printing: safeNum(orderData.printing, 0),
       });
 
-      // ✅ Send to Printrove
       try {
         const printData = await createPrintroveOrder(order);
         order.printroveOrderId = printData?.id || null;
@@ -297,7 +294,6 @@ const completeOrder = async (req, res) => {
         console.error("Wallet creation failed (halfpay):", error);
       }
 
-      // ✅ Send to Printrove
       try {
         const printData = await createPrintroveOrder(order);
         order.printroveOrderId = printData?.id || null;
@@ -349,9 +345,6 @@ const completeOrder = async (req, res) => {
       return res.status(200).json({ success: true, order });
     }
 
-    // ================================================================
-    // INVALID PAYMENT MODE
-    // ================================================================
     return res
       .status(400)
       .json({ success: false, message: "Invalid payment mode" });
@@ -363,4 +356,77 @@ const completeOrder = async (req, res) => {
   }
 };
 
-module.exports = { completeOrder };
+// ================================================================
+// GET ORDER BY ID (with design + product enrichment)
+// ================================================================
+const getOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findById(id).lean();
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    const enriched = await Promise.all(
+      (order.products || []).map(async (p) => {
+        const product = { ...p };
+        if (p.design && typeof p.design === "string") {
+          const d = await Design.findById(p.design).lean();
+          if (d) product.design = d.design;
+        }
+        if (p.design_data) product.design = p.design_data;
+
+        product.name =
+          p.name ||
+          p.products_name ||
+          p.product_name ||
+          p.product?.products_name ||
+          "Unnamed Product";
+        return product;
+      })
+    );
+
+    order.items = enriched;
+    return res.status(200).json(order);
+  } catch (err) {
+    console.error("❌ getOrderById failed:", err);
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+// ================================================================
+// GET ALL ORDERS (for Manage Orders dashboard)
+// ================================================================
+const getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find().sort({ createdAt: -1 }).lean();
+
+    const enrichedOrders = await Promise.all(
+      orders.map(async (o) => {
+        const enrichedProducts = await Promise.all(
+          (o.products || []).map(async (p) => {
+            const product = { ...p };
+            if (p.design && typeof p.design === "string") {
+              const d = await Design.findById(p.design).lean();
+              if (d) product.design = d.design;
+            }
+            if (p.design_data) product.design = p.design_data;
+            product.name =
+              p.name ||
+              p.products_name ||
+              p.product_name ||
+              p.product?.products_name ||
+              "Unnamed Product";
+            return product;
+          })
+        );
+        return { ...o, items: enrichedProducts };
+      })
+    );
+
+    return res.status(200).json(enrichedOrders);
+  } catch (err) {
+    console.error("❌ getAllOrders failed:", err);
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { completeOrder, getOrderById, getAllOrders };

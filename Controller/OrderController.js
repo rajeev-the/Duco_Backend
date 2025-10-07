@@ -1,8 +1,58 @@
 const mongoose = require("mongoose");
 const Order = require("../DataBase/Models/OrderModel");
-const product = require("../DataBase/Models/ProductsModel"); // ✅ needed to fetch product details
+const Product = require("../DataBase/Models/ProductsModel"); // ✅ corrected capitalization
+const Design = require("../DataBase/Models/DesignModel"); // ✅ to fetch design data
 
+// ================================================================
+// 🧩 Helper – Enrich Products with Design & Consistent Fields
+// ================================================================
+async function enrichOrderProducts(products = []) {
+  return await Promise.all(
+    products.map(async (p) => {
+      const item = { ...p };
+
+      // ✅ Fetch full product name/image if missing
+      if (!item.name && item.product) {
+        try {
+          const prod = await Product.findById(item.product).lean();
+          if (prod) {
+            item.name =
+              prod.products_name || prod.name || "Unnamed Product";
+            item.image =
+              Array.isArray(prod.image_url) && prod.image_url.length > 0
+                ? prod.image_url[0]
+                : item.image || "";
+          }
+        } catch (err) {
+          console.error("Error fetching product:", err.message);
+        }
+      }
+
+      // ✅ Fetch design document if stored as ID
+      if (item.design && typeof item.design === "string") {
+        const designDoc = await Design.findById(item.design).lean();
+        if (designDoc) item.design = designDoc.design;
+      }
+
+      // ✅ Handle inline design data
+      if (item.design_data) item.design = item.design_data;
+
+      // ✅ Normalize product name
+      item.name =
+        item.name ||
+        item.products_name ||
+        item.product_name ||
+        item.product?.products_name ||
+        "Unnamed Product";
+
+      return item;
+    })
+  );
+}
+
+// ================================================================
 // ---------------- CREATE ORDER ----------------
+// ================================================================
 exports.createOrder = async (req, res) => {
   try {
     const { user, items, amount, paymentStatus, paymentmode } = req.body;
@@ -11,24 +61,26 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ error: "No items provided" });
     }
 
-    // Enrich each item with product details
+    // ✅ Enrich items with product details
     const enrichedItems = await Promise.all(
       items.map(async (it) => {
-        const product = await Product.findById(it.productId);
+        const prod = await Product.findById(it.productId);
 
-        if (!product) {
+        if (!prod) {
           throw new Error(`Product not found: ${it.productId}`);
         }
 
         return {
-          product: product._id,
-          name: product.name,                   // ✅ save product name
-          image: product.image_url?.[0] || "",  // ✅ save thumbnail
+          product: prod._id,
+          name: prod.products_name || prod.name,
+          image:
+            Array.isArray(prod.image_url) && prod.image_url.length > 0
+              ? prod.image_url[0]
+              : "",
           qty: it.qty,
           size: it.size,
           color: it.color,
-          price: it.price ?? product.price,
-
+          price: it.price ?? prod.price,
           // ✅ carry custom design data if provided
           design: it.design || {},
         };
@@ -37,8 +89,8 @@ exports.createOrder = async (req, res) => {
 
     const order = await Order.create({
       user,
-      items: enrichedItems,
-      amount,
+      products: enrichedItems, // ✅ renamed to match your schema
+      price: amount,
       status: "Pending",
       paymentStatus: paymentStatus || "Paid",
       paymentmode: paymentmode || "Prepaid",
@@ -51,7 +103,9 @@ exports.createOrder = async (req, res) => {
   }
 };
 
+// ================================================================
 // ---------------- GET ORDERS BY USER ----------------
+// ================================================================
 exports.getOrdersByUser = async (req, res) => {
   try {
     const userId = req.params.userId || req.user?._id;
@@ -61,47 +115,69 @@ exports.getOrdersByUser = async (req, res) => {
     }
 
     const sort = req.query.sort || "-createdAt";
-    const orders = await Order.find({ user: userId }).sort(sort);
+    const orders = await Order.find({ user: userId }).sort(sort).lean();
 
-    return res.json(orders);
+    const enrichedOrders = await Promise.all(
+      orders.map(async (o) => ({
+        ...o,
+        items: await enrichOrderProducts(o.products || []),
+      }))
+    );
+
+    return res.json(enrichedOrders);
   } catch (err) {
     console.error("getOrdersByUser error:", err);
     return res.status(500).json({ error: "Failed to fetch orders" });
   }
 };
 
-// ---------------- GET ALL ORDERS ----------------
+// ================================================================
+// ---------------- GET ALL ORDERS (Admin Dashboard) ----------------
+// ================================================================
 exports.getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 });
-    res.json(orders);
+    const orders = await Order.find().sort({ createdAt: -1 }).lean();
+
+    const enrichedOrders = await Promise.all(
+      orders.map(async (o) => ({
+        ...o,
+        items: await enrichOrderProducts(o.products || []),
+      }))
+    );
+
+    res.json(enrichedOrders);
   } catch (err) {
     console.error("Error fetching orders:", err);
     res.status(500).json({ error: "Failed to fetch orders" });
   }
 };
 
-// ---------------- GET ORDER BY ID ----------------
+// ================================================================
+// ---------------- GET ORDER BY ID (Detailed View) ----------------
+// ================================================================
 exports.getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
-    const order = await Order.findById(id);
+    const order = await Order.findById(id).lean();
 
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    res.json(order);
+    const enrichedProducts = await enrichOrderProducts(order.products || []);
+    res.json({ ...order, items: enrichedProducts });
   } catch (err) {
     console.error("Error fetching order:", err);
     res.status(500).json({ error: "Failed to fetch order" });
   }
 };
 
+// ================================================================
 // ---------------- UPDATE ORDER STATUS ----------------
+// ================================================================
 exports.updateOrderStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, qikinkOrderId, paymentmode } = req.body || {};
+  const { status, paymentmode } = req.body || {};
 
   try {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -109,18 +185,19 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     const patch = {};
-    const validStatuses = ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
+    const validStatuses = [
+      "Pending",
+      "Processing",
+      "Shipped",
+      "Delivered",
+      "Cancelled",
+    ];
 
     if (typeof status !== "undefined") {
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ error: "Invalid status value" });
       }
       patch.status = status;
-    }
-
-    if (Object.prototype.hasOwnProperty.call(req.body, "qikinkOrderId")) {
-      const normalized = (qikinkOrderId ?? "").toString().trim();
-      patch.qikinkOrderId = normalized.length ? normalized : null;
     }
 
     if (typeof paymentmode !== "undefined") {
@@ -139,7 +216,7 @@ exports.updateOrderStatus = async (req, res) => {
       id,
       { $set: patch },
       { new: true, runValidators: true }
-    );
+    ).lean();
 
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
