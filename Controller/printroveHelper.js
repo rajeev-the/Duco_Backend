@@ -3,32 +3,20 @@ const axios = require("axios");
 const { getPrintroveToken } = require("./printroveAuth");
 require("dotenv").config();
 
-/**
- * Axios instance for Printrove API with base URL.
- * It will automatically inject Authorization header when used inside functions below.
- */
 const printrove = axios.create({
   baseURL: process.env.PRINTROVE_BASE_URL || "https://api.printrove.com/api",
   headers: { "Content-Type": "application/json" },
 });
 
-/**
- * ===============================================================
- * 🟢 CREATE ORDER ON PRINTROVE
- * Called automatically after /completeOrder
- * ===============================================================
- */
+/* ---------------------- 🟢 CREATE ORDER ---------------------- */
 async function createPrintroveOrder(order) {
   const token = await getPrintroveToken();
 
-  // --- Build the Printrove payload (per API documentation) ---
   const payload = {
-    reference_number: order.razorpayPaymentId || order.orderId, // Unique order reference
-    external_order_id: order.orderId, // Your internal order ID
-    retail_price: Number(order.price) || 0, // Required
-    cod: order.paymentmode?.toLowerCase() === "cod" ? true : false, // Prepaid / COD
-
-    // ✅ Customer details
+    reference_number: order.razorpayPaymentId || order.orderId,
+    external_order_id: order.orderId,
+    retail_price: Number(order.price) || 0,
+    cod: order.paymentmode?.toLowerCase() === "cod",
     customer: {
       name: order.address?.fullName?.slice(0, 50) || "Duco Customer",
       email: order.address?.email || "noemail@duco.com",
@@ -41,55 +29,38 @@ async function createPrintroveOrder(order) {
       country: order.address?.country || "India",
       pincode: order.address?.pincode || "110019",
     },
-
-    // ✅ Product details
     order_products: (order.products || []).map((p) => ({
-      product_id: Number(p.printroveProductId) || undefined, // Printrove Product ID
-      variant_id: Number(p.printroveVariantId) || undefined, // Variant ID
+      product_id: Number(p.printroveProductId),
+      variant_id: Number(p.printroveVariantId),
       quantity:
         typeof p.quantity === "object"
           ? Object.values(p.quantity || {})[0] || 1
           : p.quantity || 1,
-      is_plain: false, // Printed garment
-
-      // ✅ Using URLs for now (you can replace with design IDs once uploaded)
+      is_plain: false,
       design: {
         front: {
           url: p.design?.frontImage || "",
-          dimensions: {
-            width: 10,
-            height: 10,
-            top: 5,
-            left: 5,
-          },
+          dimensions: { width: 10, height: 10, top: 5, left: 5 },
         },
         back: {
           url: p.design?.backImage || "",
-          dimensions: {
-            width: 10,
-            height: 10,
-            top: 5,
-            left: 5,
-          },
+          dimensions: { width: 10, height: 10, top: 5, left: 5 },
         },
       },
     })),
-
     payment_status: "paid",
     shipping_method: "standard",
-
-    // ✅ Optional fields (leave blank for auto selection)
-    courier_id: undefined,
-    invoice_url: "",
   };
 
-  console.log("🟡 Sending Printrove order payload:", JSON.stringify(payload, null, 2));
+  console.log(
+    "🟡 Sending Printrove order payload:",
+    JSON.stringify(payload, null, 2)
+  );
 
   try {
     const res = await printrove.post("/external/orders", payload, {
       headers: { Authorization: `Bearer ${token}` },
     });
-
     console.log("✅ Printrove Order Created:", res.data);
     return res.data;
   } catch (err) {
@@ -97,29 +68,21 @@ async function createPrintroveOrder(order) {
       "❌ Error creating Printrove order:",
       err.response?.data || err.message
     );
-
-    if (err.response?.data?.errors) {
-      console.error("🔍 Validation errors:", err.response.data.errors);
-    }
-
     throw new Error("Printrove order creation failed");
   }
 }
 
-/**
- * ===============================================================
- * 🟣 FETCH ALL PRODUCTS FROM PRINTROVE CATALOG
- * ===============================================================
- */
+/* ---------------------- 🟣 FETCH ALL PRODUCTS ---------------------- */
 async function listPrintroveProducts() {
   const token = await getPrintroveToken();
-
   try {
     const res = await printrove.get("/external/products", {
       headers: { Authorization: `Bearer ${token}` },
     });
-
-    console.log("✅ Printrove Products fetched:", res.data?.products?.length || 0);
+    console.log(
+      "✅ Printrove Products fetched:",
+      res.data?.products?.length || 0
+    );
     return res.data;
   } catch (err) {
     console.error(
@@ -130,19 +93,13 @@ async function listPrintroveProducts() {
   }
 }
 
-/**
- * ===============================================================
- * 🟤 FETCH SINGLE PRODUCT DETAILS BY ID
- * ===============================================================
- */
+/* ---------------------- 🟤 FETCH SINGLE PRODUCT (variants) ---------------------- */
 async function getPrintroveProduct(productId) {
   const token = await getPrintroveToken();
-
   try {
     const res = await printrove.get(`/external/products/${productId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-
     console.log(`✅ Printrove Product (${productId}) fetched successfully.`);
     return res.data;
   } catch (err) {
@@ -154,8 +111,37 @@ async function getPrintroveProduct(productId) {
   }
 }
 
+/* ---------------------- 🟠 COMBINED: PRODUCT + VARIANTS ---------------------- */
+async function listPrintroveProductsWithVariants() {
+  const baseList = await listPrintroveProducts();
+  const products = baseList?.products || [];
+
+  const detailed = [];
+  for (const p of products) {
+    try {
+      const detail = await getPrintroveProduct(p.id);
+      detailed.push({
+        id: p.id,
+        name: p.name,
+        variants:
+          detail?.product?.variants?.map((v) => ({
+            id: v.id,
+            color: v.color,
+            size: v.size,
+          })) || [],
+      });
+    } catch (err) {
+      console.warn(`⚠️ Could not fetch variants for product ${p.id}`);
+      detailed.push({ id: p.id, name: p.name, variants: [] });
+    }
+  }
+
+  return detailed;
+}
+
 module.exports = {
   createPrintroveOrder,
   listPrintroveProducts,
   getPrintroveProduct,
+  listPrintroveProductsWithVariants,
 };

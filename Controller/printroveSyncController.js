@@ -1,12 +1,9 @@
-const { listPrintroveProducts } = require("./printroveHelper");
-const Product = require("../DataBase/Models/ProductsModel");
+// controllers/printroveController.js
+const { listPrintroveProductsWithVariants } = require("./printroveHelper");
 
 exports.syncPrintroveCatalog = async (req, res) => {
   try {
-    const data = await listPrintroveProducts();
-    const products = data?.products || [];
-
-    // Optionally: Save to your own "PrintroveProducts" collection if you want to show them in admin
+    const products = await listPrintroveProductsWithVariants();
     return res.status(200).json({
       success: true,
       count: products.length,
