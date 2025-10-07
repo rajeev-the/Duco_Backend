@@ -4,6 +4,33 @@ const Product = require("../DataBase/Models/ProductsModel");
 const Design = require("../DataBase/Models/DesignModel");
 
 // ================================================================
+// 🧩 Helper – Flatten base64 or nested design objects
+// ================================================================
+function flattenDesign(design = {}) {
+  const flatten = (v) =>
+    typeof v === "string"
+      ? v
+      : typeof v?.uploadedImage === "string"
+      ? v.uploadedImage
+      : "";
+
+  return {
+    frontView: flatten(design.front),
+    backView: flatten(design.back),
+    leftView: flatten(design.left),
+    rightView: flatten(design.right),
+    uploadedLogo: flatten(design.uploadedLogo),
+    extraFiles: Array.isArray(design.extraFiles)
+      ? design.extraFiles.map((f) =>
+          typeof f === "string"
+            ? { name: f.split("/").pop(), url: f }
+            : f
+        )
+      : [],
+  };
+}
+
+// ================================================================
 // 🧩 Helper – Enrich Products with Design, Product, and File Data
 // ================================================================
 async function enrichOrderProducts(products = []) {
@@ -17,9 +44,7 @@ async function enrichOrderProducts(products = []) {
           const prod = await Product.findById(item.product).lean();
           if (prod) {
             item.name =
-              prod.products_name ||
-              prod.name ||
-              "Unnamed Product";
+              prod.products_name || prod.name || "Unnamed Product";
             item.image =
               Array.isArray(prod.image_url) && prod.image_url.length > 0
                 ? prod.image_url[0]
@@ -34,7 +59,7 @@ async function enrichOrderProducts(products = []) {
       if (item.design && typeof item.design === "string") {
         try {
           const designDoc = await Design.findById(item.design).lean();
-          if (designDoc) item.design = designDoc.design;
+          if (designDoc?.design) item.design = designDoc.design;
         } catch (err) {
           console.error("Error fetching design:", err.message);
         }
@@ -42,6 +67,13 @@ async function enrichOrderProducts(products = []) {
 
       // ✅ Handle inline design data
       if (item.design_data) item.design = item.design_data;
+
+      // ✅ Normalize design structure (for base64 / nested keys)
+      if (item.design && typeof item.design === "object") {
+        item.design = flattenDesign(item.design);
+      } else {
+        item.design = flattenDesign({});
+      }
 
       // ✅ Normalize extra files (so frontend can show them properly)
       if (item.design?.extraFiles?.length > 0) {
@@ -188,7 +220,9 @@ exports.getOrderById = async (req, res) => {
       return res.status(404).json({ error: "Order not found" });
     }
 
+    // ✅ Fully normalized items (with base64 design flattening)
     const enrichedProducts = await enrichOrderProducts(order.products || []);
+
     res.json({ ...order, items: enrichedProducts });
   } catch (err) {
     console.error("Error fetching order:", err);
