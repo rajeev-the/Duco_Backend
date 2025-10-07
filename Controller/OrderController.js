@@ -1,17 +1,44 @@
 const mongoose = require("mongoose");
 const Order = require("../DataBase/Models/OrderModel");
-const Product = require("../DataBase/Models/ProductsModel"); // ✅ corrected capitalization
-const Design = require("../DataBase/Models/DesignModel"); // ✅ to fetch design data
+const Product = require("../DataBase/Models/ProductsModel");
+const Design = require("../DataBase/Models/DesignModel");
 
 // ================================================================
-// 🧩 Helper – Enrich Products with Design & Consistent Fields
+// 🧩 Helper – Flatten base64 or nested design objects
+// ================================================================
+function flattenDesign(design = {}) {
+  const flatten = (v) =>
+    typeof v === "string"
+      ? v
+      : typeof v?.uploadedImage === "string"
+      ? v.uploadedImage
+      : "";
+
+  return {
+    frontView: flatten(design.front),
+    backView: flatten(design.back),
+    leftView: flatten(design.left),
+    rightView: flatten(design.right),
+    uploadedLogo: flatten(design.uploadedLogo),
+    extraFiles: Array.isArray(design.extraFiles)
+      ? design.extraFiles.map((f) =>
+          typeof f === "string"
+            ? { name: f.split("/").pop(), url: f }
+            : f
+        )
+      : [],
+  };
+}
+
+// ================================================================
+// 🧩 Helper – Enrich Products with Design, Product, and File Data
 // ================================================================
 async function enrichOrderProducts(products = []) {
   return await Promise.all(
     products.map(async (p) => {
       const item = { ...p };
 
-      // ✅ Fetch full product name/image if missing
+      // ✅ Fetch product name/image if missing
       if (!item.name && item.product) {
         try {
           const prod = await Product.findById(item.product).lean();
@@ -30,14 +57,39 @@ async function enrichOrderProducts(products = []) {
 
       // ✅ Fetch design document if stored as ID
       if (item.design && typeof item.design === "string") {
-        const designDoc = await Design.findById(item.design).lean();
-        if (designDoc) item.design = designDoc.design;
+        try {
+          const designDoc = await Design.findById(item.design).lean();
+          if (designDoc?.design) item.design = designDoc.design;
+        } catch (err) {
+          console.error("Error fetching design:", err.message);
+        }
       }
 
       // ✅ Handle inline design data
       if (item.design_data) item.design = item.design_data;
 
-      // ✅ Normalize product name
+      // ✅ Normalize design structure (for base64 / nested keys)
+      if (item.design && typeof item.design === "object") {
+        item.design = flattenDesign(item.design);
+      } else {
+        item.design = flattenDesign({});
+      }
+
+      // ✅ Normalize extra files (so frontend can show them properly)
+      if (item.design?.extraFiles?.length > 0) {
+        item.design.extraFiles = item.design.extraFiles.map((f) => {
+          if (typeof f === "string")
+            return { name: f.split("/").pop(), url: f };
+          return f;
+        });
+      }
+
+      // ✅ Normalize uploadedLogo for consistency
+      if (item.design?.uploadedLogo && typeof item.design.uploadedLogo === "string") {
+        item.design.uploadedLogo = item.design.uploadedLogo.trim();
+      }
+
+      // ✅ Fallback product name (prevents “Unnamed Product”)
       item.name =
         item.name ||
         item.products_name ||
@@ -65,10 +117,7 @@ exports.createOrder = async (req, res) => {
     const enrichedItems = await Promise.all(
       items.map(async (it) => {
         const prod = await Product.findById(it.productId);
-
-        if (!prod) {
-          throw new Error(`Product not found: ${it.productId}`);
-        }
+        if (!prod) throw new Error(`Product not found: ${it.productId}`);
 
         return {
           product: prod._id,
@@ -81,15 +130,14 @@ exports.createOrder = async (req, res) => {
           size: it.size,
           color: it.color,
           price: it.price ?? prod.price,
-          // ✅ carry custom design data if provided
-          design: it.design || {},
+          design: it.design || {}, // ✅ custom design data
         };
       })
     );
 
     const order = await Order.create({
       user,
-      products: enrichedItems, // ✅ renamed to match your schema
+      products: enrichedItems,
       price: amount,
       status: "Pending",
       paymentStatus: paymentStatus || "Paid",
@@ -115,7 +163,10 @@ exports.getOrdersByUser = async (req, res) => {
     }
 
     const sort = req.query.sort || "-createdAt";
-    const orders = await Order.find({ user: userId }).sort(sort).lean();
+    const orders = await Order.find({ user: userId })
+      .populate("user", "name email")
+      .sort(sort)
+      .lean();
 
     const enrichedOrders = await Promise.all(
       orders.map(async (o) => ({
@@ -136,7 +187,10 @@ exports.getOrdersByUser = async (req, res) => {
 // ================================================================
 exports.getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 }).lean();
+    const orders = await Order.find()
+      .populate("user", "name email")
+      .sort({ createdAt: -1 })
+      .lean();
 
     const enrichedOrders = await Promise.all(
       orders.map(async (o) => ({
@@ -158,13 +212,17 @@ exports.getAllOrders = async (req, res) => {
 exports.getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
-    const order = await Order.findById(id).lean();
+    const order = await Order.findById(id)
+      .populate("user", "name email")
+      .lean();
 
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
 
+    // ✅ Fully normalized items (with base64 design flattening)
     const enrichedProducts = await enrichOrderProducts(order.products || []);
+
     res.json({ ...order, items: enrichedProducts });
   } catch (err) {
     console.error("Error fetching order:", err);
