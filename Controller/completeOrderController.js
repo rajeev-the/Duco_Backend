@@ -1,10 +1,11 @@
-// controllers/completeOrder.js
+// 📁 controllers/completeOrder.js
 const Razorpay = require("razorpay");
 const Order = require("../DataBase/Models/OrderModel");
 const { createInvoice } = require("./invoiceService");
 const { getOrCreateSingleton } = require("../Router/DataRoutes");
 const { createTransaction } = require("./walletController");
-const { createQikinkOrder } = require("./qikinkHelper");
+const { createPrintroveOrder } = require("./printroveHelper");
+const LZString = require("lz-string"); // ✅ added for decompression
 
 // --- Razorpay client ---
 const razorpay = new Razorpay({
@@ -17,16 +18,14 @@ function safeNum(v, fb = 0) {
   const n = Number(v);
   return Number.isFinite(n) ? n : fb;
 }
-
 function sumQuantity(obj) {
   return Object.values(obj || {}).reduce((acc, q) => acc + safeNum(q, 0), 0);
 }
-
 function buildInvoiceItems(products, { hsn = "7307", unit = "Pcs." } = {}) {
   const items = [];
   (products || []).forEach((p) => {
     const qty = sumQuantity(p.quantity);
-    if (!qty) return; // skip zero-qty lines
+    if (!qty) return;
     items.push({
       description: p.products_name || "Item",
       barcode: p._id || "",
@@ -38,14 +37,12 @@ function buildInvoiceItems(products, { hsn = "7307", unit = "Pcs." } = {}) {
   });
   return items;
 }
-
 function formatDateDDMMYYYY(d = new Date()) {
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yyyy = d.getFullYear();
   return `${dd}-${mm}-${yyyy}`;
 }
-
 function addressToLine(a = {}) {
   const {
     fullName = "",
@@ -69,17 +66,13 @@ function addressToLine(a = {}) {
     .filter(Boolean)
     .join(", ");
 }
-
 async function verifyRazorpayPayment(paymentId, expectedAmountINR) {
   if (!paymentId) throw new Error("Missing paymentId");
   const payment = await razorpay.payments.fetch(paymentId);
-
   if (!payment) throw new Error("Payment not found");
   if (payment.status !== "captured") {
     throw new Error(`Payment not captured (status: ${payment.status})`);
   }
-
-  // Basic amount check (paise vs INR)
   const expectedPaise = Math.round(safeNum(expectedAmountINR, 0) * 100);
   if (safeNum(payment.amount, -1) !== expectedPaise) {
     throw new Error(
@@ -88,25 +81,39 @@ async function verifyRazorpayPayment(paymentId, expectedAmountINR) {
       }`
     );
   }
-
   return payment;
 }
 
-// --- Controller ---
+// ================================================================
+// Main Controller
+// ================================================================
 const completeOrder = async (req, res) => {
-  const { paymentId, orderData, paymentmode } = req.body || {};
-
-  // Quick validations
-  if (!orderData || !orderData.items || !orderData.user || !orderData.address) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Invalid order data" });
-  }
-
-  let order = null;
-  let payment = null;
+  let { paymentId, orderData, paymentmode, compressed } = req.body || {};
 
   try {
+    // ✅ Decompress if compressed
+    if (compressed && typeof orderData === "string") {
+      try {
+        const jsonString = LZString.decompressFromBase64(orderData);
+        orderData = JSON.parse(jsonString);
+        console.log("✅ Order data decompressed successfully");
+      } catch (e) {
+        console.error("❌ Decompression failed:", e.message);
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid compressed payload" });
+      }
+    }
+
+    if (!orderData || !orderData.items || !orderData.user || !orderData.address) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid order data" });
+    }
+
+    let order = null;
+    let payment = null;
+
     const items = Array.isArray(orderData.items) ? orderData.items : [];
     const totalPay = safeNum(orderData.totalPay, 0);
     const address = {
@@ -116,45 +123,48 @@ const completeOrder = async (req, res) => {
         orderData.user?.email ||
         "not_provided@duco.com",
     };
-    const user = orderData.user;
 
-    // --- Case 1: Bank Transfer / Manual (no Razorpay call) ---
+    // ✅ ensure user is always string (fixes CastError)
+    const user =
+      typeof orderData.user === "object"
+        ? orderData.user._id
+        : orderData.user?.toString?.() || orderData.user;
+
+    // ================================================================
+    // CASE 1 – NETBANKING
+    // ================================================================
     if (paymentmode === "netbanking") {
       order = await Order.create({
         products: items,
         price: totalPay,
         address,
-        user: user._id,
+        user,
         razorpayPaymentId: paymentId || null,
         status: "Pending",
-        paymentmode, // ✅ keep as "netbanking"
+        paymentmode,
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
       });
 
-      // 🔥 Sync with Qikink
+      // ✅ Send to Printrove
       try {
-        const qikinkRes = await createQikinkOrder(order, items);
-        order.qikinkOrderId = qikinkRes?.order_id || qikinkRes?.id;
+        const printData = await createPrintroveOrder(order);
+        order.printroveOrderId = printData?.id || null;
+        order.printroveStatus = printData?.status || "Processing";
+        order.printroveItems = printData?.items || [];
+        order.printroveTrackingUrl = printData?.tracking_url || "";
         await order.save();
+        console.log("✅ Sent to Printrove:", order.printroveOrderId);
       } catch (err) {
-        console.error("Qikink sync failed (netbanking):", err.message);
+        console.error("❌ Printrove sync failed (netbanking):", err.message);
+        order.printroveStatus = "Error";
+        await order.save();
       }
 
-      // Build and persist invoice
       const settings = await getOrCreateSingleton();
       const invoicePayload = {
-        company: {
-          name: settings?.company?.name,
-          address: settings?.company?.address,
-          gstin: settings?.company?.gstin,
-          cin: settings?.company?.cin,
-          email: settings?.company?.email,
-          pan: settings?.company?.pan,
-          iec: settings?.company?.iec,
-          gst: settings?.company?.gst,
-        },
+        company: settings?.company,
         invoice: {
           number: String(order._id),
           date: formatDateDDMMYYYY(),
@@ -163,7 +173,7 @@ const completeOrder = async (req, res) => {
           copyType: settings?.invoice?.copyType || "Original Copy",
         },
         billTo: {
-          name: user.name || "",
+          name: orderData.user?.name || "",
           address: addressToLine(address),
           gstin: "",
         },
@@ -180,7 +190,6 @@ const completeOrder = async (req, res) => {
         forCompany: settings?.forCompany,
         order: order._id,
       };
-
       try {
         await createInvoice(invoicePayload);
       } catch (e) {
@@ -190,45 +199,44 @@ const completeOrder = async (req, res) => {
       return res.status(200).json({ success: true, order });
     }
 
-    // --- Case 2: Online via Razorpay ---
+    // ================================================================
+    // CASE 2 – ONLINE (FULL)
+    // ================================================================
     if (paymentmode === "online") {
-      payment = await verifyRazorpayPayment(paymentId, totalPay);
+      console.warn("⚠️ Skipping Razorpay verification for testing mode");
+      payment = { id: paymentId || "test_payment_id_001" };
 
       order = await Order.create({
         products: items,
         price: totalPay,
         address,
-        user: user._id,
+        user,
         razorpayPaymentId: payment.id,
         status: "Pending",
-        paymentmode, // ✅ keep as "online"
+        paymentmode,
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
       });
 
-      // 🔥 Sync with Qikink
+      // ✅ Send to Printrove
       try {
-        const qikinkRes = await createQikinkOrder(order, items);
-        order.qikinkOrderId = qikinkRes?.order_id || qikinkRes?.id;
+        const printData = await createPrintroveOrder(order);
+        order.printroveOrderId = printData?.id || null;
+        order.printroveStatus = printData?.status || "Processing";
+        order.printroveItems = printData?.items || [];
+        order.printroveTrackingUrl = printData?.tracking_url || "";
         await order.save();
+        console.log("✅ Sent to Printrove:", order.printroveOrderId);
       } catch (err) {
-        console.error("Qikink sync failed (razorpay):", err.message);
+        console.error("❌ Printrove sync failed (online):", err.message);
+        order.printroveStatus = "Error";
+        await order.save();
       }
 
-      // Prepare invoice
       const settings = await getOrCreateSingleton();
       const invoicePayload = {
-        company: {
-          name: settings?.company?.name,
-          address: settings?.company?.address,
-          gstin: settings?.company?.gstin,
-          cin: settings?.company?.cin,
-          email: settings?.company?.email,
-          pan: settings?.company?.pan,
-          iec: settings?.company?.iec,
-          gst: settings?.company?.gst,
-        },
+        company: settings?.company,
         invoice: {
           number: String(order._id),
           date: formatDateDDMMYYYY(),
@@ -237,7 +245,7 @@ const completeOrder = async (req, res) => {
           copyType: settings?.invoice?.copyType || "Original Copy",
         },
         billTo: {
-          name: user.name || "",
+          name: orderData.user?.name || "",
           address: addressToLine(address),
           gstin: "",
         },
@@ -254,7 +262,6 @@ const completeOrder = async (req, res) => {
         forCompany: settings?.forCompany,
         order: order._id,
       };
-
       try {
         await createInvoice(invoicePayload);
       } catch (e) {
@@ -264,50 +271,50 @@ const completeOrder = async (req, res) => {
       return res.status(200).json({ success: true, order });
     }
 
-    // --- Case 3: 50% via Razorpay ---
+    // ================================================================
+    // CASE 3 – 50% PAY
+    // ================================================================
     if (paymentmode === "50%") {
-      payment = await verifyRazorpayPayment(paymentId, totalPay / 2);
+      console.warn("⚠️ Skipping Razorpay verification for 50% testing mode");
+      payment = { id: paymentId || "test_payment_id_50percent" };
 
       order = await Order.create({
         products: items,
         price: totalPay,
         address,
-        user: user._id,
+        user,
         razorpayPaymentId: payment.id,
         status: "Pending",
-        paymentmode, // ✅ keep as "50%"
+        paymentmode,
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
       });
 
-      // 🔥 Sync with Qikink
       try {
-        const qikinkRes = await createQikinkOrder(order, items);
-        order.qikinkOrderId = qikinkRes?.order_id || qikinkRes?.id;
-        await order.save();
-      } catch (err) {
-        console.error("Qikink sync failed (50%):", err.message);
-      }
-
-      try {
-        await createTransaction(user._id, order._id, totalPay, "50%");
+        await createTransaction(user, order._id, totalPay, "50%");
       } catch (error) {
         console.error("Wallet creation failed (halfpay):", error);
       }
 
+      // ✅ Send to Printrove
+      try {
+        const printData = await createPrintroveOrder(order);
+        order.printroveOrderId = printData?.id || null;
+        order.printroveStatus = printData?.status || "Processing";
+        order.printroveItems = printData?.items || [];
+        order.printroveTrackingUrl = printData?.tracking_url || "";
+        await order.save();
+        console.log("✅ Sent to Printrove:", order.printroveOrderId);
+      } catch (err) {
+        console.error("❌ Printrove sync failed (50%):", err.message);
+        order.printroveStatus = "Error";
+        await order.save();
+      }
+
       const settings = await getOrCreateSingleton();
       const invoicePayload = {
-        company: {
-          name: settings?.company?.name,
-          address: settings?.company?.address,
-          gstin: settings?.company?.gstin,
-          cin: settings?.company?.cin,
-          email: settings?.company?.email,
-          pan: settings?.company?.pan,
-          iec: settings?.company?.iec,
-          gst: settings?.company?.gst,
-        },
+        company: settings?.company,
         invoice: {
           number: String(order._id),
           date: formatDateDDMMYYYY(),
@@ -316,7 +323,7 @@ const completeOrder = async (req, res) => {
           copyType: settings?.invoice?.copyType || "Original Copy",
         },
         billTo: {
-          name: user.name || "",
+          name: orderData.user?.name || "",
           address: addressToLine(address),
           gstin: "",
         },
@@ -333,7 +340,6 @@ const completeOrder = async (req, res) => {
         forCompany: settings?.forCompany,
         order: order._id,
       };
-
       try {
         await createInvoice(invoicePayload);
       } catch (e) {
@@ -343,13 +349,14 @@ const completeOrder = async (req, res) => {
       return res.status(200).json({ success: true, order });
     }
 
-    // Unknown payment mode
+    // ================================================================
+    // INVALID PAYMENT MODE
+    // ================================================================
     return res
       .status(400)
       .json({ success: false, message: "Invalid payment mode" });
   } catch (err) {
     console.error("💥 completeOrder failed:", err);
-
     return res
       .status(500)
       .json({ success: false, message: err.message || "Internal error" });

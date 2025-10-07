@@ -1,7 +1,8 @@
+// /DataBase/Models/OrderModel.js
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-// Embedded Address Schema
+// ------------------ Address Sub-Schema ------------------
 const AddressSchema = new Schema(
   {
     fullName: { type: String, required: true },
@@ -23,6 +24,7 @@ const AddressSchema = new Schema(
   { _id: false }
 );
 
+// ------------------ Order Schema ------------------
 const OrderSchema = new Schema(
   {
     orderId: {
@@ -39,11 +41,9 @@ const OrderSchema = new Schema(
     ],
 
     price: { type: Number, required: true },
-
     currency: { type: String, default: "INR" },
 
     address: { type: AddressSchema, required: true },
-
     user: { type: Schema.Types.ObjectId, ref: "User", required: true },
 
     deliveryExpectedDate: {
@@ -69,14 +69,30 @@ const OrderSchema = new Schema(
       default: "Pending",
     },
 
-    // ✅ Expanded enum to allow all modes you want
+    // ✅ All payment modes you currently support
     paymentmode: {
       type: String,
       enum: ["online", "netbanking", "50%", "COD", "Prepaid"],
-      default: "online", // ✅ default is now "online"
+      default: "online",
     },
 
-    qikinkOrderId: { type: String },
+    // ------------------ 🔹 Printrove Integration Fields ------------------
+    printroveOrderId: { type: String, default: null }, // ID returned by Printrove
+    printroveStatus: {
+      type: String,
+      enum: [
+        "Pending",
+        "Processing",
+        "Dispatched",
+        "Delivered",
+        "Cancelled",
+        "Error",
+      ],
+      default: "Pending",
+    },
+    printroveItems: { type: Array, default: [] }, // store Printrove line-items
+    printroveTrackingUrl: { type: String, default: "" }, // tracking link if available
+    // ----------------------------------------------------
 
     pf: { type: Number, default: 0 },
     gst: { type: Number, default: 0 },
@@ -85,19 +101,17 @@ const OrderSchema = new Schema(
   { timestamps: true }
 );
 
-// 🔹 Pre-save hook to auto-generate orderId
+// ------------------ Auto-generate Order ID ------------------
 OrderSchema.pre("save", async function (next) {
-  if (this.orderId) return next(); // already set
+  if (this.orderId) return next();
 
   try {
     const today = new Date();
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, "0");
     const dd = String(today.getDate()).padStart(2, "0");
-
     const datePrefix = `${yyyy}${mm}${dd}`;
 
-    // Count how many orders already created today
     const count = await mongoose.model("Order").countDocuments({
       createdAt: {
         $gte: new Date(`${yyyy}-${mm}-${dd}T00:00:00.000Z`),
