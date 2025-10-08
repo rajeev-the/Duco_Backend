@@ -130,7 +130,84 @@ const completeOrder = async (req, res) => {
         : orderData.user?.toString?.() || orderData.user;
 
     // ================================================================
-    // CASE 1 – NETBANKING
+    // CASE 0 – NORMALIZE PAYMENT MODE DISPLAY
+    // ================================================================
+    let readableMode = paymentmode;
+    if (paymentmode === "store_pickup") readableMode = "Pay on Store";
+    else if (paymentmode === "netbanking") readableMode = "Paid via Netbanking";
+    else if (paymentmode === "50%") readableMode = "50% Advance Payment";
+    else if (paymentmode === "online") readableMode = "Online Payment";
+    else if (paymentmode === "manual_payment") readableMode = "Manual Payment";
+
+    // ================================================================
+    // CASE 1 – STORE PICKUP (NEW)
+    // ================================================================
+    if (paymentmode === "store_pickup") {
+      order = await Order.create({
+        products: items,
+        price: totalPay,
+        address,
+        user,
+        status: "Pending",
+        paymentmode: readableMode,
+        pf: safeNum(orderData.pf, 0),
+        gst: safeNum(orderData.gst, 0),
+        printing: safeNum(orderData.printing, 0),
+      });
+
+      try {
+        const printData = await createPrintroveOrder(order);
+        order.printroveOrderId = printData?.id || null;
+        order.printroveStatus = printData?.status || "Processing";
+        order.printroveItems = printData?.items || [];
+        order.printroveTrackingUrl = printData?.tracking_url || "";
+        await order.save();
+        console.log("✅ Sent to Printrove:", order.printroveOrderId);
+      } catch (err) {
+        console.error("❌ Printrove sync failed (store pickup):", err.message);
+        order.printroveStatus = "Error";
+        await order.save();
+      }
+
+      const settings = await getOrCreateSingleton();
+      const invoicePayload = {
+        company: settings?.company,
+        invoice: {
+          number: String(order._id),
+          date: formatDateDDMMYYYY(),
+          placeOfSupply: settings?.invoice?.placeOfSupply,
+          reverseCharge: !!settings?.invoice?.reverseCharge,
+          copyType: settings?.invoice?.copyType || "Original Copy",
+        },
+        billTo: {
+          name: orderData.user?.name || "",
+          address: addressToLine(address),
+          gstin: "",
+        },
+        items: buildInvoiceItems(items),
+        charges: {
+          pf: safeNum(orderData.pf, 0),
+          printing: safeNum(orderData.printing, 0),
+        },
+        tax: {
+          cgstRate: safeNum(orderData.gst, 0) / 2,
+          sgstRate: safeNum(orderData.gst, 0) / 2,
+        },
+        terms: settings?.terms,
+        forCompany: settings?.forCompany,
+        order: order._id,
+      };
+      try {
+        await createInvoice(invoicePayload);
+      } catch (e) {
+        console.error("Invoice creation failed (store pickup):", e);
+      }
+
+      return res.status(200).json({ success: true, order });
+    }
+
+    // ================================================================
+    // CASE 2 – NETBANKING
     // ================================================================
     if (paymentmode === "netbanking") {
       order = await Order.create({
@@ -140,7 +217,7 @@ const completeOrder = async (req, res) => {
         user,
         razorpayPaymentId: paymentId || null,
         status: "Pending",
-        paymentmode,
+        paymentmode: readableMode,
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
@@ -198,7 +275,7 @@ const completeOrder = async (req, res) => {
     }
 
     // ================================================================
-    // CASE 2 – ONLINE (FULL)
+    // CASE 3 – ONLINE (FULL)
     // ================================================================
     if (paymentmode === "online") {
       console.warn("⚠️ Skipping Razorpay verification for testing mode");
@@ -211,7 +288,7 @@ const completeOrder = async (req, res) => {
         user,
         razorpayPaymentId: payment.id,
         status: "Pending",
-        paymentmode,
+        paymentmode: readableMode,
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
@@ -269,7 +346,7 @@ const completeOrder = async (req, res) => {
     }
 
     // ================================================================
-    // CASE 3 – 50% PAY
+    // CASE 4 – 50% PAY
     // ================================================================
     if (paymentmode === "50%") {
       console.warn("⚠️ Skipping Razorpay verification for 50% testing mode");
@@ -282,7 +359,7 @@ const completeOrder = async (req, res) => {
         user,
         razorpayPaymentId: payment.id,
         status: "Pending",
-        paymentmode,
+        paymentmode: readableMode,
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
