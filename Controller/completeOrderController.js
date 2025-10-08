@@ -128,6 +128,12 @@ const completeOrder = async (req, res) => {
       typeof orderData.user === "object"
         ? orderData.user._id
         : orderData.user?.toString?.() || orderData.user;
+      // ✅ Detect if order is Corporate (B2B) or Retail (B2C)
+const isCorporateOrder = (orderData?.items || []).some(
+  (item) => item?.isCorporate === true
+);
+const orderType = isCorporateOrder ? "B2B" : "B2C";
+
 
     // ================================================================
     // CASE 0 – NORMALIZE PAYMENT MODE DISPLAY
@@ -153,6 +159,7 @@ const completeOrder = async (req, res) => {
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
+        orderType
       });
 
       try {
@@ -221,6 +228,7 @@ const completeOrder = async (req, res) => {
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
+        orderType
       });
 
       try {
@@ -292,6 +300,7 @@ const completeOrder = async (req, res) => {
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
+        orderType
       });
 
       try {
@@ -363,6 +372,7 @@ const completeOrder = async (req, res) => {
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
+        orderType
       });
 
       try {

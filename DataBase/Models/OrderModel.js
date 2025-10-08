@@ -1,4 +1,3 @@
-// /DataBase/Models/OrderModel.js
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
@@ -46,6 +45,13 @@ const OrderSchema = new Schema(
     address: { type: AddressSchema, required: true },
     user: { type: Schema.Types.ObjectId, ref: "User", required: true },
 
+    // ✅ New: Distinguish Corporate vs Retail orders
+    orderType: {
+      type: String,
+      enum: ["B2B", "B2C"],
+      default: "B2C",
+    },
+
     deliveryExpectedDate: {
       type: Date,
       default: () => {
@@ -72,7 +78,15 @@ const OrderSchema = new Schema(
     // ✅ All payment modes you currently support
     paymentmode: {
       type: String,
-      enum: ["online", "netbanking", "50%", "COD", "Prepaid"],
+      enum: [
+        "online",
+        "netbanking",
+        "50%",
+        "COD",
+        "Prepaid",
+        "store_pickup",
+        "manual_payment",
+      ],
       default: "online",
     },
 
