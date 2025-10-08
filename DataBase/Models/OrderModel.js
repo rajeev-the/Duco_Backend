@@ -76,19 +76,21 @@ const OrderSchema = new Schema(
     },
 
     // ✅ All payment modes you currently support
-    paymentmode: {
-      type: String,
-      enum: [
-        "online",
-        "netbanking",
-        "50%",
-        "COD",
-        "Prepaid",
-        "store_pickup",
-        "manual_payment",
-      ],
-      default: "online",
-    },
+   paymentmode: {
+  type: String,
+  enum: [
+    "online",
+    "netbanking",
+    "50%",
+    "COD",
+    "Prepaid",
+    "store_pickup",
+    "manual_payment",
+    "Pay on Store",
+  ],
+  default: "online",
+},
+
 
     // ------------------ 🔹 Printrove Integration Fields ------------------
     printroveOrderId: { type: String, default: null }, // ID returned by Printrove
