@@ -1,6 +1,7 @@
 const Product = require("../DataBase/Models/ProductsModel");
 const mongoose = require("mongoose");
 
+// ✅ CREATE PRODUCT
 const CreateProdcuts = async (req, res) => {
   try {
     const {
@@ -12,6 +13,7 @@ const CreateProdcuts = async (req, res) => {
       gender = "Male", // Default to Male if not provided
       printroveProductId,
       printroveVariantId,
+      isCorporate = false, // ✅ New field for B2B/B2C
     } = req.body;
 
     if (
@@ -32,15 +34,16 @@ const CreateProdcuts = async (req, res) => {
       pricing,
       Desciptions,
       subcategory,
-      gender, // Now included
+      gender,
       printroveProductId,
       printroveVariantId,
+      isCorporate: Boolean(isCorporate), // ✅ Ensure boolean
     });
 
     const savedProduct = await product.save();
 
     return res.status(201).send({
-      message: "Product created successfully",
+      message: "✅ Product created successfully",
       product: savedProduct,
     });
   } catch (error) {
@@ -51,27 +54,30 @@ const CreateProdcuts = async (req, res) => {
   }
 };
 
+// ✅ GET ALL PRODUCTS
 const GetProducts = async (req, res) => {
   try {
-    const data = await Product.find(); // fetch all products
-    res.status(200).json(data); // return with status 200
+    const data = await Product.find();
+    res.status(200).json(data);
   } catch (error) {
     console.error("Error fetching products:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
+// ✅ GET SINGLE PRODUCT
 const GetProductssingle = async (req, res) => {
   const { prodcutsid } = req.params;
   try {
-    const data = await Product.findById(prodcutsid); // fetch all products
-    res.status(200).json(data); // return with status 200
+    const data = await Product.findById(prodcutsid);
+    res.status(200).json(data);
   } catch (error) {
-    console.error("Error fetching products:", error);
+    console.error("Error fetching product:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
+// ✅ DELETE PRODUCT
 const deleteProduct = async (req, res) => {
   const productId = req.params.productId || req.params.prodcutsid;
 
@@ -86,7 +92,7 @@ const deleteProduct = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: "Product deleted successfully",
+      message: "🗑️ Product deleted successfully",
       product: deleted,
     });
   } catch (error) {
@@ -95,19 +101,20 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+// ✅ GET PRODUCTS BY SUBCATEGORY
 const GetProductsSubcategory = async (req, res) => {
   const { idsub } = req.params;
 
   try {
-    const data = await Product.find({ subcategory: idsub }); // fetch all products
-    res.status(200).json(data); // return with status 200
+    const data = await Product.find({ subcategory: idsub });
+    res.status(200).json(data);
   } catch (error) {
     console.error("Error fetching products:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-// PUT /api/products/:id
+// ✅ UPDATE PRODUCT
 const updateProduct = async (req, res) => {
   try {
     const productId = req.params.productId;
@@ -116,6 +123,11 @@ const updateProduct = async (req, res) => {
     // Optional: Validate ObjectId
     if (!productId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: "Invalid product ID" });
+    }
+
+    // ✅ Ensure isCorporate is boolean (important for safety)
+    if (updates.hasOwnProperty("isCorporate")) {
+      updates.isCorporate = Boolean(updates.isCorporate);
     }
 
     // Optional: Recalculate Stock if image_url/content is provided
@@ -141,7 +153,7 @@ const updateProduct = async (req, res) => {
     }
 
     res.status(200).json({
-      message: "Product updated successfully",
+      message: "✅ Product updated successfully",
       product: updatedProduct,
     });
   } catch (error) {

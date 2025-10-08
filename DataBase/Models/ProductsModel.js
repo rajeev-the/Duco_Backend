@@ -40,6 +40,7 @@ const productSchema = new mongoose.Schema(
     },
 
     Desciptions: [{ type: String, required: true }],
+
     gender: {
       type: String,
       required: true,
@@ -48,18 +49,24 @@ const productSchema = new mongoose.Schema(
 
     subcategory: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Subcategory", // fix typo if needed
+      ref: "Subcategory",
       required: true,
     },
 
-    // ✅ New fields for Printrove mapping
+    // ✅ New field for Corporate vs Consumer segregation
+    isCorporate: {
+      type: Boolean,
+      default: false, // false = B2C, true = B2B
+    },
+
+    // ✅ Optional Printrove integration fields
     printroveProductId: { type: Number },
     printroveVariantId: { type: Number },
   },
   { timestamps: true }
 );
 
-// Auto-calculate total stock before save
+// ✅ Auto-calculate total stock before save
 productSchema.pre("save", function (next) {
   let total = 0;
   this.image_url.forEach((imageItem) => {
