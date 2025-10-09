@@ -18,9 +18,11 @@ function safeNum(v, fb = 0) {
   const n = Number(v);
   return Number.isFinite(n) ? n : fb;
 }
+
 function sumQuantity(obj) {
   return Object.values(obj || {}).reduce((acc, q) => acc + safeNum(q, 0), 0);
 }
+
 function buildInvoiceItems(products, { hsn = "7307", unit = "Pcs." } = {}) {
   const items = [];
   (products || []).forEach((p) => {
@@ -37,12 +39,14 @@ function buildInvoiceItems(products, { hsn = "7307", unit = "Pcs." } = {}) {
   });
   return items;
 }
+
 function formatDateDDMMYYYY(d = new Date()) {
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yyyy = d.getFullYear();
   return `${dd}-${mm}-${yyyy}`;
 }
+
 function addressToLine(a = {}) {
   const {
     fullName = "",
@@ -66,6 +70,7 @@ function addressToLine(a = {}) {
     .filter(Boolean)
     .join(", ");
 }
+
 async function verifyRazorpayPayment(paymentId, expectedAmountINR) {
   if (!paymentId) throw new Error("Missing paymentId");
   const payment = await razorpay.payments.fetch(paymentId);
@@ -128,12 +133,12 @@ const completeOrder = async (req, res) => {
       typeof orderData.user === "object"
         ? orderData.user._id
         : orderData.user?.toString?.() || orderData.user;
-      // ✅ Detect if order is Corporate (B2B) or Retail (B2C)
-const isCorporateOrder = (orderData?.items || []).some(
-  (item) => item?.isCorporate === true
-);
-const orderType = isCorporateOrder ? "B2B" : "B2C";
 
+    // ✅ Detect if order is Corporate (B2B) or Retail (B2C)
+    const isCorporateOrder = (orderData?.items || []).some(
+      (item) => item?.isCorporate === true
+    );
+    const orderType = isCorporateOrder ? "B2B" : "B2C";
 
     // ================================================================
     // CASE 0 – NORMALIZE PAYMENT MODE DISPLAY
@@ -159,7 +164,7 @@ const orderType = isCorporateOrder ? "B2B" : "B2C";
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
-        orderType
+        orderType,
       });
 
       try {
@@ -228,7 +233,7 @@ const orderType = isCorporateOrder ? "B2B" : "B2C";
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
-        orderType
+        orderType,
       });
 
       try {
@@ -300,7 +305,7 @@ const orderType = isCorporateOrder ? "B2B" : "B2C";
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
-        orderType
+        orderType,
       });
 
       try {
@@ -372,7 +377,7 @@ const orderType = isCorporateOrder ? "B2B" : "B2C";
         pf: safeNum(orderData.pf, 0),
         gst: safeNum(orderData.gst, 0),
         printing: safeNum(orderData.printing, 0),
-        orderType
+        orderType,
       });
 
       try {
@@ -432,9 +437,11 @@ const orderType = isCorporateOrder ? "B2B" : "B2C";
       return res.status(200).json({ success: true, order });
     }
 
+    // ✅ fallback if paymentmode didn't match
     return res
       .status(400)
       .json({ success: false, message: "Invalid payment mode" });
+
   } catch (err) {
     console.error("💥 completeOrder failed:", err);
     return res
@@ -442,59 +449,6 @@ const orderType = isCorporateOrder ? "B2B" : "B2C";
       .json({ success: false, message: err.message || "Internal error" });
   }
 };
-// ================================================================
-// CASE 5 – STORE PICKUP (Pay on Store)
-// ================================================================
-if (paymentmode === "store_pickup") {
-  order = await Order.create({
-    products: items,
-    price: totalPay,
-    address,
-    user,
-    status: "Pending",
-    paymentmode,
-    pf: safeNum(orderData.pf, 0),
-    gst: safeNum(orderData.gst, 0),
-    printing: safeNum(orderData.printing, 0),
-  });
-
-  try {
-    const settings = await getOrCreateSingleton();
-    const invoicePayload = {
-      company: settings?.company,
-      invoice: {
-        number: String(order._id),
-        date: formatDateDDMMYYYY(),
-        placeOfSupply: settings?.invoice?.placeOfSupply,
-        reverseCharge: !!settings?.invoice?.reverseCharge,
-        copyType: settings?.invoice?.copyType || "Original Copy",
-      },
-      billTo: {
-        name: orderData.user?.name || "",
-        address: addressToLine(address),
-        gstin: "",
-      },
-      items: buildInvoiceItems(items),
-      charges: {
-        pf: safeNum(orderData.pf, 0),
-        printing: safeNum(orderData.printing, 0),
-      },
-      tax: {
-        cgstRate: safeNum(orderData.gst, 0) / 2,
-        sgstRate: safeNum(orderData.gst, 0) / 2,
-      },
-      terms: settings?.terms,
-      forCompany: settings?.forCompany,
-      order: order._id,
-    };
-    await createInvoice(invoicePayload);
-  } catch (e) {
-    console.error("Invoice creation failed (store pickup):", e);
-  }
-
-  return res.status(200).json({ success: true, order });
-}
-
 
 // ================================================================
 // GET ORDER BY ID (with design + product enrichment)
