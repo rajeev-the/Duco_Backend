@@ -65,11 +65,19 @@ const GetProducts = async (req, res) => {
   }
 };
 
-// ✅ GET SINGLE PRODUCT
+// ✅ GET SINGLE PRODUCT (fixed to include Printrove IDs)
 const GetProductssingle = async (req, res) => {
   const { prodcutsid } = req.params;
   try {
-    const data = await Product.findById(prodcutsid);
+    // Explicitly select the fields we need
+    const data = await Product.findById(prodcutsid).select(
+      "products_name image_url pricing Desciptions subcategory gender printroveProductId printroveVariantId isCorporate"
+    );
+
+    if (!data) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
     res.status(200).json(data);
   } catch (error) {
     console.error("Error fetching product:", error);
