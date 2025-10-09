@@ -65,7 +65,7 @@ async function createPrintroveOrder(order) {
   console.log("📦 Sending payload to Printrove:", JSON.stringify(payload, null, 2));
 
   try {
-    const res = await axios.post("https://api.printrove.com/api/v1/orders", payload, {
+    const res = await axios.post("https://api.printrove.com/api/external/orders", payload, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
