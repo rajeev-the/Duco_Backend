@@ -18,6 +18,7 @@ async function createPrintroveOrder(order) {
 
   // ✅ Build Printrove-compliant payload
   const payload = {
+    reference_number: o.razorpayPaymentId || o.orderId || `ORD-${Date.now()}`, // Ensure reference_number is added
     shipping_method: "standard",
     payment_status: "paid",
     order_to: {
