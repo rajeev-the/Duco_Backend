@@ -15,7 +15,7 @@ function normalizeRange(raw, label) {
   if (minqty < 1) throw new Error(`${label}.minqty must be >= 1`);
   if (maxqty < minqty) throw new Error(`${label}.maxqty must be >= minqty`);
 
-  // ✅ If this is GST, we expect "percent"
+  // ✅ If this is GST, use percent
   if (raw.percent != null) {
     const percent = toNum(raw.percent, `${label}.percent`);
     if (percent < 0) throw new Error(`${label}.percent must be >= 0`);
@@ -32,12 +32,13 @@ function validateAndSortTiers(arr, keyName) {
   if (!Array.isArray(arr) || arr.length === 0)
     throw new Error(`${keyName} must be a non-empty array`);
 
-  const tiers = arr.map((t, i) => normalizeRange(t, `${keyName}[${i}]`))
-                   .sort((a, b) => a.minqty - b.minqty);
+  const tiers = arr
+    .map((t, i) => normalizeRange(t, `${keyName}[${i}]`))
+    .sort((a, b) => a.minqty - b.minqty);
 
   for (let i = 1; i < tiers.length; i++) {
     const prev = tiers[i - 1];
-    const cur  = tiers[i];
+    const cur = tiers[i];
     if (cur.minqty <= prev.maxqty) {
       throw new Error(
         `${keyName} tiers overlap: tier ${i} minqty (${cur.minqty}) <= previous maxqty (${prev.maxqty})`
@@ -48,28 +49,32 @@ function validateAndSortTiers(arr, keyName) {
 }
 
 function findTierValue(tiers, qty, label) {
-  const hit = tiers.find(t => qty >= t.minqty && qty <= t.maxqty);
+  const hit = tiers.find((t) => qty >= t.minqty && qty <= t.maxqty);
   if (!hit) throw new Error(`No matching ${label} tier for qty=${qty}`);
   return hit.percent != null ? hit.percent : hit.cost; // ✅ GST uses percent
 }
 
+// ---------- default plan ----------
 async function getOrCreateSinglePlan() {
   let plan = await ChargePlan.findOne();
-if (!plan) {
-  // ✅ Create baseline plan with 5% GST instead of 0%
-  plan = await ChargePlan.create({
-    pakageingandforwarding: [
-      { minqty: 1, maxqty: 1_000_000_000, cost: 0 }
-    ],
-    printingcost: [
-      { minqty: 1, maxqty: 1_000_000_000, cost: 0 }
-    ],
-    // ✅ Use "percent" not "cost"
-    gst: [
-      { minqty: 1, maxqty: 1_000_000_000, percent: 5 }
-    ],
-  });
-}
+
+  if (!plan) {
+    // ✅ Create baseline plan with realistic values
+    plan = await ChargePlan.create({
+      pakageingandforwarding: [
+        { minqty: 1, maxqty: 50, cost: 12 },
+        { minqty: 51, maxqty: 200, cost: 10 },
+        { minqty: 201, maxqty: 1000000000, cost: 8 },
+      ],
+      printingcost: [
+        { minqty: 1, maxqty: 50, cost: 15 },
+        { minqty: 51, maxqty: 200, cost: 12 },
+        { minqty: 201, maxqty: 1000000000, cost: 10 },
+      ],
+      gst: [{ minqty: 1, maxqty: 1000000000, percent: 5 }],
+    });
+  }
+
   return plan;
 }
 
@@ -115,6 +120,50 @@ exports.updatePlan = async (req, res) => {
   }
 };
 
+// ---------- main calculation ----------
+exports.getTotalsForQty = async (req, res) => {
+  try {
+    const qty = Number(req.query.qty ?? req.body?.qty);
+    if (!Number.isFinite(qty) || qty < 1) {
+      return res.status(400).json({ success: false, error: "qty must be a number >= 1" });
+    }
+
+    const subtotal = Number(req.query.subtotal ?? req.body?.subtotal ?? 0);
+    const plan = await getOrCreateSinglePlan();
+
+    const packaging = findTierValue(plan.pakageingandforwarding, qty, "pakageingandforwarding");
+    const printing = findTierValue(plan.printingcost, qty, "printingcost");
+    const gstPercent = findTierValue(plan.gst, qty, "gst");
+
+    // ✅ Compute totals
+    const pfTotal = packaging * qty;
+    const printTotal = printing * qty;
+    const gstAmount = ((subtotal + pfTotal + printTotal) * gstPercent) / 100;
+
+    res.json({
+      success: true,
+      data: {
+        qty,
+        perUnit: {
+          pakageingandforwarding: packaging,
+          printingcost: printing,
+        },
+        totals: {
+          pakageingandforwarding: pfTotal,
+          printingcost: printTotal,
+          gstPercent,
+          gstAmount,
+          subtotal,
+          grandTotal: subtotal + pfTotal + printTotal + gstAmount,
+        },
+      },
+    });
+  } catch (e) {
+    res.status(400).json({ success: false, error: e.message });
+  }
+};
+
+// ---------- legacy compatibility endpoint ----------
 exports.getRatesForQty = async (req, res) => {
   try {
     const qty = Number(req.query.qty ?? req.body?.qty);
@@ -124,52 +173,16 @@ exports.getRatesForQty = async (req, res) => {
 
     const plan = await getOrCreateSinglePlan();
     const packaging = findTierValue(plan.pakageingandforwarding, qty, "pakageingandforwarding");
-    const printing  = findTierValue(plan.printingcost, qty, "printingcost");
-    const gstPercent = findTierValue(plan.gst, qty, "gst"); // ✅ percent
-
-    res.json({
-      success: true,
-      data: {
-        qty,
-        perUnit: { pakageingandforwarding: packaging, printingcost: printing },
-        gstPercent, // ✅ send as percent
-      }
-    });
-  } catch (e) {
-    res.status(400).json({ success: false, error: e.message });
-  }
-};
-
-exports.getTotalsForQty = async (req, res) => {
-  try {
-    const qty = Number(req.query.qty ?? req.body?.qty);
-    if (!Number.isFinite(qty) || qty < 1) {
-      return res.status(400).json({ success: false, error: "qty must be a number >= 1" });
-    }
-
-    const subtotal = Number(req.query.subtotal ?? req.body?.subtotal ?? 0);
-
-    const plan = await getOrCreateSinglePlan();
-    const packaging = findTierValue(plan.pakageingandforwarding, qty, "pakageingandforwarding");
-    const printing  = findTierValue(plan.printingcost, qty, "printingcost");
+    const printing = findTierValue(plan.printingcost, qty, "printingcost");
     const gstPercent = findTierValue(plan.gst, qty, "gst");
 
-    const pfTotal = packaging * qty;
-    const printTotal = printing * qty;
-    const gstAmount = (subtotal * gstPercent) / 100;
-
     res.json({
       success: true,
       data: {
         qty,
         perUnit: { pakageingandforwarding: packaging, printingcost: printing },
-        totals: {
-          pakageingandforwarding: pfTotal,
-          printingcost: printTotal,
-          gstPercent,
-          gstAmount,
-        }
-      }
+        gstPercent,
+      },
     });
   } catch (e) {
     res.status(400).json({ success: false, error: e.message });

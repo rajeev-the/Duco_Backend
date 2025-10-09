@@ -8,16 +8,16 @@ const {
   getTotalsForQty,
 } = require("../Controller/chargePlanController");
 
-// Read the single plan (auto-creates baseline if none)
+// ✅ Read the current plan (auto-creates baseline if none exists)
 router.get("/chargeplan", getPlan);
 
-// Update tiers (any of the three arrays). Body should contain arrays of { minqty, maxqty, cost }.
+// ✅ Update tiers for P&F, printing, and GST
 router.patch("/chargeplan", updatePlan);
 
-// Get per-unit rates for a given qty
-router.get("/chargeplan/rates", getRatesForQty);
+// ✅ Get per-unit rates for a given qty (legacy endpoint)
+router.post("/chargeplan/rates", getRatesForQty);
 
-// Get totals (per category + grand total) for a given qty
-router.get("/chargeplan/totals", getTotalsForQty);
+// ✅ Get full totals (P&F + Printing + GST + Grand Total)
+router.post("/chargeplan/totals", getTotalsForQty);
 
 module.exports = router;

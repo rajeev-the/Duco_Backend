@@ -87,6 +87,8 @@ const OrderSchema = new Schema(
     "store_pickup",
     "manual_payment",
     "Pay on Store",
+    "Paid via Netbanking"
+
   ],
   default: "online",
 },

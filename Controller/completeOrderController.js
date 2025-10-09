@@ -442,6 +442,59 @@ const orderType = isCorporateOrder ? "B2B" : "B2C";
       .json({ success: false, message: err.message || "Internal error" });
   }
 };
+// ================================================================
+// CASE 5 – STORE PICKUP (Pay on Store)
+// ================================================================
+if (paymentmode === "store_pickup") {
+  order = await Order.create({
+    products: items,
+    price: totalPay,
+    address,
+    user,
+    status: "Pending",
+    paymentmode,
+    pf: safeNum(orderData.pf, 0),
+    gst: safeNum(orderData.gst, 0),
+    printing: safeNum(orderData.printing, 0),
+  });
+
+  try {
+    const settings = await getOrCreateSingleton();
+    const invoicePayload = {
+      company: settings?.company,
+      invoice: {
+        number: String(order._id),
+        date: formatDateDDMMYYYY(),
+        placeOfSupply: settings?.invoice?.placeOfSupply,
+        reverseCharge: !!settings?.invoice?.reverseCharge,
+        copyType: settings?.invoice?.copyType || "Original Copy",
+      },
+      billTo: {
+        name: orderData.user?.name || "",
+        address: addressToLine(address),
+        gstin: "",
+      },
+      items: buildInvoiceItems(items),
+      charges: {
+        pf: safeNum(orderData.pf, 0),
+        printing: safeNum(orderData.printing, 0),
+      },
+      tax: {
+        cgstRate: safeNum(orderData.gst, 0) / 2,
+        sgstRate: safeNum(orderData.gst, 0) / 2,
+      },
+      terms: settings?.terms,
+      forCompany: settings?.forCompany,
+      order: order._id,
+    };
+    await createInvoice(invoicePayload);
+  } catch (e) {
+    console.error("Invoice creation failed (store pickup):", e);
+  }
+
+  return res.status(200).json({ success: true, order });
+}
+
 
 // ================================================================
 // GET ORDER BY ID (with design + product enrichment)
