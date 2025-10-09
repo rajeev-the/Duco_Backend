@@ -3,92 +3,93 @@ const axios = require("axios");
 const { getPrintroveToken } = require("./printroveAuth");
 require("dotenv").config();
 
+// ✅ Initialize Axios instance
 const printrove = axios.create({
   baseURL: process.env.PRINTROVE_BASE_URL || "https://api.printrove.com/api",
   headers: { "Content-Type": "application/json" },
 });
 
-/* ---------------------- 🟢 CREATE ORDER ---------------------- */
+/* -------------------------------------------------------------------------- */
+/* 🟢 CREATE ORDER (Corrected Format for Printrove API v1)                    */
+/* -------------------------------------------------------------------------- */
 async function createPrintroveOrder(order) {
   const token = await getPrintroveToken();
+  const o = order.toObject ? order.toObject() : order;
 
+  // ✅ Build Printrove-compliant payload
   const payload = {
-    reference_number: order.razorpayPaymentId || order.orderId,
-    external_order_id: order.orderId,
-    retail_price: Number(order.price) || 0,
-    cod: order.paymentmode?.toLowerCase() === "cod",
-    customer: {
-      name: order.address?.fullName?.slice(0, 50) || "Duco Customer",
-      email: order.address?.email || "noemail@duco.com",
-      number: parseInt(order.address?.mobileNumber || "9999999999"),
-      address1: order.address?.houseNumber?.slice(0, 50) || "Address Line 1",
-      address2: order.address?.street?.slice(0, 50) || "Address Line 2",
-      address3: order.address?.landmark?.slice(0, 50) || "",
-      city: order.address?.city || "New Delhi",
-      state: order.address?.state || "Delhi",
-      country: order.address?.country || "India",
-      pincode: order.address?.pincode || "110019",
-    },
-    order_products: (order.products || []).map((p) => ({
-      product_id: Number(p.printroveProductId),
-      variant_id: Number(p.printroveVariantId),
-      quantity:
-        typeof p.quantity === "object"
-          ? Object.values(p.quantity || {})[0] || 1
-          : p.quantity || 1,
-      is_plain: false,
-      design: {
-        front: {
-          url: p.design?.frontImage || "",
-          height: 12,
-          width: 10,
-          top: 5,
-          left: 4,
-        },
-        back: {
-          url: p.design?.backImage || "",
-          height: 12,
-          width: 10,
-          top: 5,
-          left: 4,
-        },
-      },
-    })),
-    payment_status: "paid",
     shipping_method: "standard",
+    payment_status: "paid",
+    order_to: {
+      name: o.address?.fullName || o.address?.name || "Duco Customer",
+      email: o.address?.email || "noemail@duco.com",
+      address: `${o.address?.houseNumber || ""}, ${o.address?.street || ""}`,
+      city: o.address?.city || "New Delhi",
+      state: o.address?.state || "Delhi",
+      pincode: o.address?.pincode || o.address?.postalCode || "110019",
+      phone: o.address?.mobileNumber || o.address?.phone || "9999999999",
+    },
+    order_products: (o.products || []).map((p) => {
+      const qty =
+        typeof p.quantity === "object"
+          ? Object.values(p.quantity || {}).reduce(
+              (a, b) => a + Number(b || 0),
+              0
+            )
+          : Number(p.quantity) || 1;
+
+      // ✅ Correct design object per Printrove docs
+      const designs = [];
+      if (p.design?.frontImage) {
+        designs.push({
+          print_file: p.design.frontImage,
+          print_area: "front",
+        });
+      }
+      if (p.design?.backImage) {
+        designs.push({
+          print_file: p.design.backImage,
+          print_area: "back",
+        });
+      }
+
+      return {
+        product_id: Number(p.printroveProductId),
+        variant_id: Number(p.printroveVariantId),
+        quantity: qty,
+        design: designs,
+      };
+    }),
   };
 
-  console.log(
-    "🟡 Sending Printrove order payload:",
-    JSON.stringify(payload, null, 2)
-  );
+  console.log("📦 Sending payload to Printrove:", JSON.stringify(payload, null, 2));
 
   try {
-    const res = await printrove.post("/external/orders", payload, {
-      headers: { Authorization: `Bearer ${token}` },
+    const res = await axios.post("https://api.printrove.com/api/v1/orders", payload, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     });
-    console.log("✅ Printrove Order Created:", res.data);
+
+    console.log("✅ Printrove order created successfully:", res.data);
     return res.data;
   } catch (err) {
-    console.error(
-      "❌ Error creating Printrove order:",
-      err.response?.data || err.message
-    );
+    console.error("❌ Error creating Printrove order:", err.response?.data || err.message);
     throw new Error("Printrove order creation failed");
   }
 }
 
-/* ---------------------- 🟣 FETCH ALL PRODUCTS ---------------------- */
+/* -------------------------------------------------------------------------- */
+/* 🟣 FETCH ALL PRINTROVE PRODUCTS                                            */
+/* -------------------------------------------------------------------------- */
 async function listPrintroveProducts() {
   const token = await getPrintroveToken();
   try {
     const res = await printrove.get("/external/products", {
       headers: { Authorization: `Bearer ${token}` },
     });
-    console.log(
-      "✅ Printrove Products fetched:",
-      res.data?.products?.length || 0
-    );
+    console.log("✅ Printrove Products fetched:", res.data?.products?.length || 0);
     return res.data;
   } catch (err) {
     console.error(
@@ -99,7 +100,9 @@ async function listPrintroveProducts() {
   }
 }
 
-/* ---------------------- 🟤 FETCH SINGLE PRODUCT (variants) ---------------------- */
+/* -------------------------------------------------------------------------- */
+/* 🟤 FETCH SINGLE PRODUCT (variants)                                         */
+/* -------------------------------------------------------------------------- */
 async function getPrintroveProduct(productId) {
   const token = await getPrintroveToken();
   try {
@@ -117,17 +120,18 @@ async function getPrintroveProduct(productId) {
   }
 }
 
-/* ---------------------- 🟠 COMBINED: PRODUCT + VARIANTS ---------------------- */
+/* -------------------------------------------------------------------------- */
+/* 🟠 COMBINED: PRODUCT + VARIANTS                                            */
+/* -------------------------------------------------------------------------- */
 async function listPrintroveProductsWithVariants() {
   const baseList = await listPrintroveProducts();
   const products = baseList?.products || [];
-
   const detailed = [];
+
   for (const p of products) {
     try {
       const detail = await getPrintroveProduct(p.id);
 
-      // 👇 Add this line — it will show one full variant structure for debugging
       console.log(
         `🧩 Printrove Product ${p.id} example variant:`,
         detail?.product?.variants?.[0]
@@ -164,6 +168,9 @@ async function listPrintroveProductsWithVariants() {
   return detailed;
 }
 
+/* -------------------------------------------------------------------------- */
+/* ✅ EXPORT MODULES                                                          */
+/* -------------------------------------------------------------------------- */
 module.exports = {
   createPrintroveOrder,
   listPrintroveProducts,
