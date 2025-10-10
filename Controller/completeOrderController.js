@@ -94,6 +94,14 @@ async function verifyRazorpayPayment(paymentId, expectedAmountINR) {
 // ================================================================
 const completeOrder = async (req, res) => {
   let { paymentId, orderData, paymentmode, compressed } = req.body || {};
+  // ✅ Normalize charge structure (accept both orderData.charges.* or flat fields)
+const pfCharge =
+  safeNum(orderData?.charges?.pf, 0) || safeNum(orderData?.pf, 0) || 0;
+const printingCharge =
+  safeNum(orderData?.charges?.printing, 0) ||
+  safeNum(orderData?.printing, 0) ||
+  0;
+
 
   try {
     // ✅ Decompress if compressed
@@ -161,9 +169,9 @@ const completeOrder = async (req, res) => {
         user,
         status: "Pending",
         paymentmode: readableMode,
-        pf: safeNum(orderData.pf, 0),
+        pf: pfCharge,
         gst: safeNum(orderData.gst, 0),
-        printing: safeNum(orderData.printing, 0),
+        printing: printingCharge,
         orderType,
       });
 
@@ -198,8 +206,9 @@ const completeOrder = async (req, res) => {
         },
         items: buildInvoiceItems(items),
         charges: {
-          pf: safeNum(orderData.pf, 0),
-          printing: safeNum(orderData.printing, 0),
+          pf: pfCharge,
+          printing: printingCharge,
+
         },
         tax: {
           cgstRate: safeNum(orderData.gst, 0) / 2,
@@ -230,9 +239,9 @@ const completeOrder = async (req, res) => {
         razorpayPaymentId: paymentId || null,
         status: "Pending",
         paymentmode: readableMode,
-        pf: safeNum(orderData.pf, 0),
+        pf: pfCharge,
+        printing: printingCharge,
         gst: safeNum(orderData.gst, 0),
-        printing: safeNum(orderData.printing, 0),
         orderType,
       });
 
@@ -267,8 +276,8 @@ const completeOrder = async (req, res) => {
         },
         items: buildInvoiceItems(items),
         charges: {
-          pf: safeNum(orderData.pf, 0),
-          printing: safeNum(orderData.printing, 0),
+          pf: pfCharge,
+        printing: printingCharge,
         },
         tax: {
           cgstRate: safeNum(orderData.gst, 0) / 2,
@@ -302,9 +311,9 @@ const completeOrder = async (req, res) => {
         razorpayPaymentId: payment.id,
         status: "Pending",
         paymentmode: readableMode,
-        pf: safeNum(orderData.pf, 0),
+       pf: pfCharge,
+       printing: printingCharge,
         gst: safeNum(orderData.gst, 0),
-        printing: safeNum(orderData.printing, 0),
         orderType,
       });
 
@@ -339,8 +348,8 @@ const completeOrder = async (req, res) => {
         },
         items: buildInvoiceItems(items),
         charges: {
-          pf: safeNum(orderData.pf, 0),
-          printing: safeNum(orderData.printing, 0),
+          pf: pfCharge,
+          printing: printingCharge,
         },
         tax: {
           cgstRate: safeNum(orderData.gst, 0) / 2,
@@ -374,9 +383,9 @@ const completeOrder = async (req, res) => {
         razorpayPaymentId: payment.id,
         status: "Pending",
         paymentmode: readableMode,
-        pf: safeNum(orderData.pf, 0),
+       pf: pfCharge,
+      printing: printingCharge,
         gst: safeNum(orderData.gst, 0),
-        printing: safeNum(orderData.printing, 0),
         orderType,
       });
 
@@ -417,8 +426,8 @@ const completeOrder = async (req, res) => {
         },
         items: buildInvoiceItems(items),
         charges: {
-          pf: safeNum(orderData.pf, 0),
-          printing: safeNum(orderData.printing, 0),
+          pf: pfCharge,
+          printing: printingCharge,
         },
         tax: {
           cgstRate: safeNum(orderData.gst, 0) / 2,
