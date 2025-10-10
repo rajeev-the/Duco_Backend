@@ -53,7 +53,7 @@ async function createPrintroveOrder(order) {
           print_area: "back",
         });
       }
-
+      console.log(`this is the payload: ${payload}`)
       return {
         product_id: Number(p.printroveProductId),
         variant_id: Number(p.printroveVariantId),
