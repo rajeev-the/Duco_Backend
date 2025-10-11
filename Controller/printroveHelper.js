@@ -5,7 +5,7 @@ require("dotenv").config();
 
 // ✅ Initialize Axios instance
 const printrove = axios.create({
-  baseURL: process.env.PRINTROVE_BASE_URL || "https://api.printrove.com/v1", // ✅ updated base URL
+  baseURL: process.env.PRINTROVE_BASE_URL || "https://api.printrove.com/api", // ✅ updated base URL
   headers: { "Content-Type": "application/json" },
 });
 
