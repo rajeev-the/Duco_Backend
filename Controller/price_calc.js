@@ -9,8 +9,8 @@ const getUpdatePricesByLocation = async (req, res) => {
   const { location } = req.body;
 
   try {
-    if (!location) {
-      return res.status(400).json({ message: "Location is missing" });
+    if (!location || location === "Unknown") {
+      return res.status(400).json({ message: "Invalid or missing location" });
     }
 
     // Case-insensitive partial match (e.g. “United Arab Emirates” ≈ “UAE”)
