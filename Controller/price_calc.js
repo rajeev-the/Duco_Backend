@@ -4,6 +4,8 @@ const Price = require("../DataBase/Models/MoneyModel.js");
 /* 🧩 1. Get updated prices by location                                       */
 /* -------------------------------------------------------------------------- */
 const getUpdatePricesByLocation = async (req, res) => {
+  console.log("📍 getUpdatePricesByLocation hit!");
+
   const { location } = req.body;
 
   try {
@@ -17,7 +19,7 @@ const getUpdatePricesByLocation = async (req, res) => {
     });
 
     if (!ref) {
-      return res.status(404).json({ message: "Location not found" });
+      return res.status(400).json({ message: "Location not found" });
     }
 
     return res.status(200).json({

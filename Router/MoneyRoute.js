@@ -1,10 +1,15 @@
-const express = require('express')
+console.log("✅ MoneyRoute file loaded successfully");
+
+const express = require("express");
 const router = express.Router();
-const {createOrUpdatePriceEntry,getUpdatePricesByLocation,getAllPrices} = require('../Controller/price_calc.js');
+const {
+  createOrUpdatePriceEntry,
+  getUpdatePricesByLocation,
+  getAllPrices,
+} = require("../Controller/price_calc.js");
 
-
-router.post('/get_location_increase',getUpdatePricesByLocation);
-router.post('/create_location_price_increase',createOrUpdatePriceEntry);
-router.get("/get_money",getAllPrices)
+router.get("/get_location_increase", getUpdatePricesByLocation);
+router.post("/create_location_price_increase", createOrUpdatePriceEntry);
+router.get("/get_money", getAllPrices);
 
 module.exports = router;
