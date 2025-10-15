@@ -8,7 +8,7 @@ const {
   getAllPrices,
 } = require("../Controller/price_calc.js");
 
-router.get("/get_location_increase", getUpdatePricesByLocation);
+router.post("/get_location_increase", getUpdatePricesByLocation);
 router.post("/create_location_price_increase", createOrUpdatePriceEntry);
 router.get("/get_money", getAllPrices);
 
