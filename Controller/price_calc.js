@@ -13,20 +13,26 @@ const getUpdatePricesByLocation = async (req, res) => {
       return res.status(400).json({ message: "Invalid or missing location" });
     }
 
-    // Case-insensitive partial match (e.g. “United Arab Emirates” ≈ “UAE”)
+    // Case-insensitive search in both location and aliases
     const ref = await Price.findOne({
-      location: { $regex: new RegExp(location, "i") },
+      $or: [
+        { location: { $regex: new RegExp(location, "i") } },
+        { aliases: { $regex: new RegExp(location, "i") } },
+      ],
     });
 
     if (!ref) {
-      return res.status(400).json({ message: "Location not found" });
+      return res
+        .status(404)
+        .json({ message: `No price rule found for ${location}` });
     }
 
     return res.status(200).json({
       success: true,
       location: ref.location,
+      aliases: ref.aliases,
       percentage: ref.price_increase,
-      currency: ref.currency, // includes country + toconvert
+      currency: ref.currency, // { country, rate }
     });
   } catch (error) {
     console.error("❌ Error in getUpdatePricesByLocation:", error);
@@ -39,7 +45,7 @@ const getUpdatePricesByLocation = async (req, res) => {
 /* -------------------------------------------------------------------------- */
 const createOrUpdatePriceEntry = async (req, res) => {
   try {
-    const { location, price_increase, currency } = req.body;
+    const { location, price_increase, currency, aliases } = req.body;
 
     if (
       !location ||
@@ -59,6 +65,7 @@ const createOrUpdatePriceEntry = async (req, res) => {
       // Update
       entry.price_increase = price_increase;
       entry.currency = currency;
+      entry.aliases = aliases || []; // ✅ add aliases
       await entry.save();
 
       return res.status(200).json({
@@ -72,6 +79,7 @@ const createOrUpdatePriceEntry = async (req, res) => {
         location,
         price_increase,
         currency,
+        aliases: aliases || [], // ✅ add aliases
       });
       await newEntry.save();
 
