@@ -1,0 +1,183 @@
+//javascript code 
+const url = new URL(
+    "https://api.printrove.com/api/external/orders"
+);
+
+let headers = {
+    "Authorization": "Bearer {YOUR_AUTH_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "reference_number": "OD1001",
+    "retail_price": 500,
+    "customer": {
+        "name": "John Doe",
+        "email": "johndoe@example.com",
+        "number": 9844654321,
+        "address1": "123 Lane, Area",
+        "address2": "Address Line 2",
+        "address3": "Landmark here",
+        "pincode": 600001,
+        "state": "Tamil Nade",
+        "city": "Chennai",
+        "country": "India"
+    },
+    "order_products": [
+        {
+            "product_id": 462,
+            "design": {
+                "front": {
+                    "id": 7,
+                    "dimensions": {
+                        "width": 3000,
+                        "height": 3000,
+                        "top": 10,
+                        "left": 50
+                    }
+                },
+                "back": {
+                    "id": 6,
+                    "dimensions": {
+                        "width": 3000,
+                        "height": 3000,
+                        "top": 10,
+                        "left": 50
+                    }
+                }
+            },
+            "quantity": 2,
+            "variant_id": 460021,
+            "is_plain": false
+        }
+    ],
+    "courier_id": 7,
+    "cod": true,
+    "invoice_url": "https:\/\/printrove.s3.ap-south-1.amazonaws.com\/invoice\/od1001.pdf"
+}
+
+fetch(url, {
+    method: "POST",
+    headers: headers,
+    body: body
+})
+    .then(response => response.json())
+    .then(json => console.log(json));
+
+
+
+//documents
+
+
+request
+
+POST api/external/orders
+Body Parameters
+
+reference_number  string
+A unique reference number should be provided for every order.
+
+retail_price  number
+The total retail price of the order. Should be greater than 0.
+
+customer  object
+The customer object
+
+customer.name  string
+Length should be between 3-50 characters
+
+customer.email  email optional
+
+customer.number  integer
+10 digits for Indian phone numbers
+
+customer.address1  string
+Length should be between 3-50 characters
+
+customer.address2  string
+Length should be between 3-50 characters
+
+customer.address3  string optional
+Length should be between 3-50 characters
+
+customer.pincode  integer optional
+6 digits for India, string for International
+
+customer.state  string optional
+Compulsory for international orders. Can be fetched from pincode for Indian address
+
+customer.city  string optional
+Compulsory for international orders. Can be fetched from pincode for Indian address
+
+customer.country  string
+The full country name or the 2 digit alpha code
+
+order_products  array
+The array of order products in the order
+
+order_products.*.product_id  integer optional
+The Printrove product ID received from the Catalog API. This is not required if variant ID is provided
+
+order_products.*.design  object
+This is not required if variant ID is provided
+
+order_products.*.design.front  object optional
+Front Design
+
+order_products.*.design.front.id  integer optional
+Front Design ID required
+
+order_products.*.design.front.dimensions  object
+Front Design Dimensions
+
+order_products.*.design.front.dimensions.width  integer
+Front design width
+
+order_products.*.design.front.dimensions.height  integer
+Front design height
+
+order_products.*.design.front.dimensions.top  integer
+Front design top
+
+order_products.*.design.front.dimensions.left  integer
+Front design left
+
+order_products.*.design.back  object optional
+Back Design
+
+order_products.*.design.back.id  integer optional
+Back Design ID required
+
+order_products.*.design.back.dimensions  object
+Back Design Dimensions
+
+order_products.*.design.back.dimensions.width  integer
+Back design width
+
+order_products.*.design.back.dimensions.height  integer
+Back design height
+
+order_products.*.design.back.dimensions.top  integer
+Back design top
+
+order_products.*.design.back.dimensions.left  integer
+Back design left
+
+order_products.*.quantity  integer
+The quantity of the order product
+
+order_products.*.variant_id  integer optional
+The variant ID of your product from the Product Library.
+
+order_products.*.is_plain  boolean optional
+Set this to true for plain garments
+
+courier_id  integer optional
+A valid serviceable Printrove courier ID. If not provided, the courier will be automatically selected based on your settings.
+
+cod  boolean
+Set this to true for COD orders
+
+invoice_url  string optional
+The URL of the invoice. Should be A4. Allowed format is pdf

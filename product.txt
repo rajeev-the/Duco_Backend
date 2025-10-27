@@ -1,0 +1,65 @@
+const url = new URL(
+    "https://api.printrove.com/api/external/orders"
+);
+
+let headers = {
+    "Authorization": "Bearer {YOUR_AUTH_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "reference_number": "OD1001",
+    "retail_price": 500,
+    "customer": {
+        "name": "John Doe",
+        "email": "johndoe@example.com",
+        "number": 9844654321,
+        "address1": "123 Lane, Area",
+        "address2": "Address Line 2",
+        "address3": "Landmark here",
+        "pincode": 600001,
+        "state": "Tamil Nade",
+        "city": "Chennai",
+        "country": "India"
+    },
+    "order_products": [
+        {
+            "product_id": 462,
+            "design": {
+                "front": {
+                    "id": 7,
+                    "dimensions": {
+                        "width": 3000,
+                        "height": 3000,
+                        "top": 10,
+                        "left": 50
+                    }
+                },
+                "back": {
+                    "id": 6,
+                    "dimensions": {
+                        "width": 3000,
+                        "height": 3000,
+                        "top": 10,
+                        "left": 50
+                    }
+                }
+            },
+            "quantity": 2,
+            "variant_id": 460021,
+            "is_plain": false
+        }
+    ],
+    "courier_id": 7,
+    "cod": true,
+    "invoice_url": "https:\/\/printrove.s3.ap-south-1.amazonaws.com\/invoice\/od1001.pdf"
+}
+
+fetch(url, {
+    method: "POST",
+    headers: headers,
+    body: body
+})
+    .then(response => response.json())
+    .then(json => console.log(json));
