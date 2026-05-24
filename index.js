@@ -135,7 +135,7 @@ app.use('/api', walletRoutes);
 
 // ======= Admin login (bcrypt + DB) =======
 app.post('/api/admin/check', async (req, res) => {
-  const { , password } = req.body || {};
+  const {userid , password } = req.body || {};
 
   if (!userid || !password) {
     return res
@@ -152,7 +152,8 @@ app.post('/api/admin/check', async (req, res) => {
     // }
 
     // const ok = await bcrypt.compare(password, user.password);
-      const ok = password == '12345' && userid == 'demo@123'
+   const ok = password === '12345' && userid === 'demo@123';
+
     if (ok) {
       return res.status(200).json({ ok: true, message: 'Admin authenticated' });
     }
