@@ -1,30 +1,82 @@
 // Controller/sendMail.js
-const { Resend } = require("resend");
+
+const nodemailer = require("nodemailer");
 require("dotenv").config();
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 async function sendOtpEmail(to, otp) {
-  const from = process.env.RESEND_FROM || "Duco <no-reply@ducoart.com>";
 
-  const html = `
-    <div style="font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.6">
-      <h2 style="margin:0 0 8px">Your OTP</h2>
-      <p style="margin:0 0 12px">Use this code within <b>5 minutes</b>:</p>
-      <div style="font-size:22px;font-weight:700;letter-spacing:2px">${otp}</div>
-      <p style="color:#666;margin-top:16px">If you didn’t request this, you can ignore this email.</p>
-    </div>
-  `;
+  try {
 
-  return resend.emails.send({
-    from,         // now your verified domain
-    to,
-    subject: "Your OTP for Login",
-    html,
-    text: `Your OTP is ${otp}. It will expire in 5 minutes.`,
-    // replyTo: "support@ducoart.com", // optional
-    tags: [{ name: "type", value: "otp" }],    // optional but handy
-  });
+    // Create transporter
+    const transporter = nodemailer.createTransport({
+
+      host: process.env.EMAIL_HOST,
+
+      port: process.env.EMAIL_PORT,
+
+      secure: process.env.EMAIL_SECURE === "true",
+
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+
+    });
+
+    // HTML Template
+    const html = `
+      <div style="font-family:Inter,Arial,sans-serif;line-height:1.6">
+
+        <h2 style="margin-bottom:10px">
+          Your OTP
+        </h2>
+
+        <p>
+          Use this OTP within <b>5 minutes</b>:
+        </p>
+
+        <div style="
+          font-size:28px;
+          font-weight:bold;
+          letter-spacing:4px;
+          margin:20px 0;
+          color:#2563eb;
+        ">
+          ${otp}
+        </div>
+
+        <p style="color:#666">
+          If you didn’t request this, you can ignore this email.
+        </p>
+
+      </div>
+    `;
+
+    // Send Email
+    const info = await transporter.sendMail({
+
+      from: `"Duco" <${process.env.EMAIL_FROM}>`,
+
+      to,
+
+      subject: "Your OTP for Login",
+
+      html,
+
+      text: `Your OTP is ${otp}. It will expire in 5 minutes.`,
+
+    });
+
+    console.log("✅ Email Sent:", info.messageId);
+
+    return info;
+
+  } catch (error) {
+
+    console.error("❌ Email Error:", error);
+
+    throw new Error("Failed to send OTP email");
+  }
 }
 
 module.exports = sendOtpEmail;
