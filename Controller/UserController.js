@@ -92,7 +92,8 @@ const sendOtp = async (req, res) => {
     await Otp.create({ email, otp }); // TTL expiry handled by schema (expires: 300)
 
     // Send email with OTP (via Resend)
-    await sendOtpEmail(email, otp);
+    const sendotp =  await sendOtpEmail(email, otp);
+    console.log(sendotp);
 
     return res.status(200).json({
       ok: true,
