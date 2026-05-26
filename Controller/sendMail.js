@@ -1,73 +1,50 @@
-const nodemailer = require("nodemailer");
-require("dotenv").config();
+const { Resend } = require("resend");
+
+const resend = new Resend(
+  process.env.RESEND_API_KEY
+);
 
 async function sendOtpEmail(to, otp) {
 
   try {
 
-    console.log("EMAIL_USER =>", process.env.EMAIL_USER);
+    const response =
+      await resend.emails.send({
 
-    console.log(
-      "EMAIL_PASS EXISTS =>",
-      !!process.env.EMAIL_PASS
-    );
+        from: "onboarding@resend.dev",
 
-    const transporter = nodemailer.createTransport({
+        to,
 
-      host: "smtp.gmail.com",
+        subject: "Your OTP",
 
-      port: 587,
+        html: `
+          <div style="font-family:Arial">
 
-      secure: false,
+            <h2>Your OTP Code</h2>
 
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
+            <h1>${otp}</h1>
 
-      tls: {
-        rejectUnauthorized: false,
-      },
+            <p>
+              Valid for 5 minutes
+            </p>
 
-      connectionTimeout: 10000,
+          </div>
+        `,
+      });
 
-      greetingTimeout: 10000,
+    console.log("✅ RESEND SUCCESS");
 
-      socketTimeout: 10000,
+    console.log(response);
 
-    });
-
-    await transporter.verify();
-
-    console.log("✅ SMTP READY");
-
-    const info = await transporter.sendMail({
-
-      from: `"Duco" <${process.env.EMAIL_FROM}>`,
-
-      to,
-
-      subject: "Your OTP for Login",
-
-      html: `
-        <div>
-          <h2>Your OTP</h2>
-          <h1>${otp}</h1>
-        </div>
-      `,
-
-      text: `OTP: ${otp}`,
-    });
-
-    console.log("✅ Email Sent:", info.messageId);
-
-    return info;
+    return response;
 
   } catch (error) {
 
-    console.error("❌ Email Error:", error);
+    console.error("❌ RESEND ERROR");
 
-    throw new Error(error.message);
+    console.error(error);
+
+    throw error;
   }
 }
 
