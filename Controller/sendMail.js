@@ -15,12 +15,12 @@ async function sendOtpEmail(to, otp) {
 
         to,
 
-        subject: "Your OTP",
+        subject: "Your OTP Code",
 
         html: `
           <div style="font-family:Arial">
 
-            <h2>Your OTP Code</h2>
+            <h2>Your OTP</h2>
 
             <h1>${otp}</h1>
 
@@ -32,7 +32,7 @@ async function sendOtpEmail(to, otp) {
         `,
       });
 
-    console.log("✅ RESEND SUCCESS");
+    console.log("✅ EMAIL SENT");
 
     console.log(response);
 
