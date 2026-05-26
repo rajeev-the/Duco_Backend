@@ -1,5 +1,3 @@
-// Controller/sendMail.js
-
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 
@@ -7,52 +5,42 @@ async function sendOtpEmail(to, otp) {
 
   try {
 
-    // Create transporter
+    console.log("EMAIL_USER =>", process.env.EMAIL_USER);
+
+    console.log(
+      "EMAIL_PASS EXISTS =>",
+      !!process.env.EMAIL_PASS
+    );
+
     const transporter = nodemailer.createTransport({
 
-      host: process.env.EMAIL_HOST,
+      host: "rajeevranjan9560807144@gmail.com",
 
-      port: process.env.EMAIL_PORT,
+      port: 587,
 
-      secure: process.env.EMAIL_SECURE === "true",
+      secure: false,
 
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
 
+      tls: {
+        rejectUnauthorized: false,
+      },
+
+      connectionTimeout: 10000,
+
+      greetingTimeout: 10000,
+
+      socketTimeout: 10000,
+
     });
 
-    // HTML Template
-    const html = `
-      <div style="font-family:Inter,Arial,sans-serif;line-height:1.6">
+    await transporter.verify();
 
-        <h2 style="margin-bottom:10px">
-          Your OTP
-        </h2>
+    console.log("✅ SMTP READY");
 
-        <p>
-          Use this OTP within <b>5 minutes</b>:
-        </p>
-
-        <div style="
-          font-size:28px;
-          font-weight:bold;
-          letter-spacing:4px;
-          margin:20px 0;
-          color:#2563eb;
-        ">
-          ${otp}
-        </div>
-
-        <p style="color:#666">
-          If you didn’t request this, you can ignore this email.
-        </p>
-
-      </div>
-    `;
-
-    // Send Email
     const info = await transporter.sendMail({
 
       from: `"Duco" <${process.env.EMAIL_FROM}>`,
@@ -61,10 +49,14 @@ async function sendOtpEmail(to, otp) {
 
       subject: "Your OTP for Login",
 
-      html,
+      html: `
+        <div>
+          <h2>Your OTP</h2>
+          <h1>${otp}</h1>
+        </div>
+      `,
 
-      text: `Your OTP is ${otp}. It will expire in 5 minutes.`,
-
+      text: `OTP: ${otp}`,
     });
 
     console.log("✅ Email Sent:", info.messageId);
@@ -75,7 +67,7 @@ async function sendOtpEmail(to, otp) {
 
     console.error("❌ Email Error:", error);
 
-    throw new Error("Failed to send OTP email");
+    throw new Error(error.message);
   }
 }
 
