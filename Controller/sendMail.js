@@ -14,7 +14,7 @@ async function sendOtpEmail(to, otp) {
 
     const transporter = nodemailer.createTransport({
 
-      host: "rajeevranjan9560807144@gmail.com",
+      host: "smtp.gmail.com",
 
       port: 587,
 
